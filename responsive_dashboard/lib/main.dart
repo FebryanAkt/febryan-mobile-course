@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 void main() => runApp(const DashboardApp());
@@ -33,11 +34,10 @@ class _DashboardAppState extends State<DashboardApp> {
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({
-    super.key,
     required this.isDark,
     required this.onDarkChanged,
+    super.key,
   });
-
   final bool isDark;
   final ValueChanged<bool> onDarkChanged;
 
@@ -47,10 +47,16 @@ class DashboardPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Student Dashboard'),
         actions: [
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-            onPressed: () => onDarkChanged(!isDark),
+          Row(
+            children: [
+              Icon(isDark ? Icons.dark_mode : Icons.light_mode),
+              const SizedBox(width: 4),
+              CupertinoSwitch(
+                value: isDark,
+                onChanged: onDarkChanged,
+              ),
+              const SizedBox(width: 12),
+            ],
           ),
         ],
       ),
