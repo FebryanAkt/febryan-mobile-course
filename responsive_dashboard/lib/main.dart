@@ -45,24 +45,47 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Student Dashboard'),
+        title: Semantics(
+          header: true,
+          child: const Text('Student Dashboard'),
+        ),
         actions: [
-          Row(
-            children: [
-              Icon(isDark ? Icons.dark_mode : Icons.light_mode),
-              const SizedBox(width: 4),
-              CupertinoSwitch(
-                value: isDark,
-                onChanged: onDarkChanged,
-              ),
-              const SizedBox(width: 12),
-            ],
+          Semantics(
+            label: 'Pengaturan mode gelap',
+            value: isDark ? 'Aktif' : 'Nonaktif',
+            toggled: isDark,
+            child: Row(
+              children: [
+                Icon(
+                  isDark ? Icons.dark_mode : Icons.light_mode,
+                  semanticLabel: isDark ? 'Ikon mode gelap' : 'Ikon mode terang',
+                ),
+                const SizedBox(width: 4),
+                CupertinoSwitch(
+                  value: isDark,
+                  onChanged: onDarkChanged,
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
           ),
         ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = constraints.maxWidth >= 700 ? 2 : 1;
+          // Breakpoint responsif:
+          // < 600: HP Portrait (1 kolom)
+          // 600 - 900: HP Landscape / Tablet Portrait (2 kolom)
+          // >= 900: Layar Desktop / Tablet Landscape (4 kolom)
+          final int columns;
+          if (constraints.maxWidth >= 900) {
+            columns = 4;
+          } else if (constraints.maxWidth >= 600) {
+            columns = 2;
+          } else {
+            columns = 1;
+          }
+
           return GridView.count(
             padding: const EdgeInsets.all(16),
             crossAxisCount: columns,
@@ -89,13 +112,28 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(children: [
-          Expanded(child: Text(title)),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
-        ]),
+    return Semantics(
+      label: '$title: $value',
+      readOnly: true,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Expanded(
+                child: ExcludeSemantics(
+                  child: Text(title),
+                ),
+              ),
+              ExcludeSemantics(
+                child: Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
