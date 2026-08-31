@@ -2,28 +2,58 @@ import 'package:flutter/material.dart';
 
 void main() => runApp(const DashboardApp());
 
-class DashboardApp extends StatelessWidget {
+class DashboardApp extends StatefulWidget {
   const DashboardApp({super.key});
+
+  @override
+  State<DashboardApp> createState() => _DashboardAppState();
+}
+
+class _DashboardAppState extends State<DashboardApp> {
+  bool isDark = false;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
-      darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark, colorSchemeSeed: Colors.indigo),
-      themeMode: ThemeMode.system,
-      home: const DashboardPage(),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorSchemeSeed: Colors.indigo,
+      ),
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      home: DashboardPage(
+        isDark: isDark,
+        onDarkChanged: (value) => setState(() => isDark = value),
+      ),
     );
   }
 }
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({
+    super.key,
+    required this.isDark,
+    required this.onDarkChanged,
+  });
+
+  final bool isDark;
+  final ValueChanged<bool> onDarkChanged;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Student Dashboard')),
+      appBar: AppBar(
+        title: const Text('Student Dashboard'),
+        actions: [
+          IconButton(
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            onPressed: () => onDarkChanged(!isDark),
+          ),
+        ],
+      ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final columns = constraints.maxWidth >= 700 ? 2 : 1;
