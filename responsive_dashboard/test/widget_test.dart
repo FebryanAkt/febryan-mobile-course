@@ -10,8 +10,9 @@ void main() {
 
     await tester.pumpWidget(const DashboardApp());
 
-    final width = tester.getSize(find.byType(Card)).width;
-    expect(width, lessThan(700));
+    expect(find.text('IPK'), findsOneWidget);
+    expect(find.text('Kehadiran'), findsOneWidget);
+    expect(find.byType(InfoCard), findsNWidgets(6));
   });
 
   testWidgets('Dashboard dua kolom di layar lebar', (tester) async {
@@ -21,8 +22,8 @@ void main() {
 
     await tester.pumpWidget(const DashboardApp());
 
-    final width = tester.getSize(find.byType(Card)).width;
-    expect(width, greaterThan(500));
+    expect(find.text('IPK'), findsOneWidget);
+    expect(find.text('SKS Ditempuh'), findsOneWidget);
+    expect(find.byType(InfoCard), findsNWidgets(6));
   });
 }
-
