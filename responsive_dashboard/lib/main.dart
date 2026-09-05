@@ -5,7 +5,6 @@ void main() => runApp(const DashboardApp());
 
 class DashboardApp extends StatefulWidget {
   const DashboardApp({super.key});
-
   @override
   State<DashboardApp> createState() => _DashboardAppState();
 }
@@ -24,115 +23,161 @@ class _DashboardAppState extends State<DashboardApp> {
         colorSchemeSeed: Colors.indigo,
       ),
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-      home: DashboardPage(
+      home: _AcademicPage(
         isDark: isDark,
-        onDarkChanged: (value) => setState(() => isDark = value),
+        onToggle: (v) => setState(() => isDark = v),
       ),
     );
   }
 }
 
-class DashboardPage extends StatelessWidget {
-  const DashboardPage({
-    required this.isDark,
-    required this.onDarkChanged,
-    super.key,
-  });
+class _AcademicPage extends StatelessWidget {
+  const _AcademicPage({required this.isDark, required this.onToggle});
   final bool isDark;
-  final ValueChanged<bool> onDarkChanged;
+  final ValueChanged<bool> onToggle;
+
+  // Data kartu: [icon, judul, nilai, keterangan]
+  static const _cards = [
+    [Icons.school, 'IPK', '3.72', 'Kumulatif'],
+    [Icons.menu_book, 'SKS Ditempuh', '96', 'dari 144 SKS'],
+    [Icons.assignment_turned_in, 'Tugas Selesai', '28 / 32', 'Semester ini'],
+    [Icons.event_available, 'Kehadiran', '92 %', 'Rata-rata'],
+    [Icons.emoji_events, 'Prestasi', '5', 'Sertifikat diraih'],
+    [Icons.calendar_today, 'Minggu Ke-', '02', 'Semester berjalan'],
+  ];
+
+  Widget _buildCard(BuildContext context, List<Object> d) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Semantics(
+      label: '${d[1]}: ${d[2]}, ${d[3]}',
+      readOnly: true,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: ExcludeSemantics(
+          child: Row(children: [
+            Container(
+              width: 46, height: 46,
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(d[0] as IconData, color: cs.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(d[1] as String, style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  Text(d[2] as String, style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  Text(d[3] as String, style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: Semantics(
-          header: true,
-          child: const Text('Student Dashboard'),
-        ),
+        title: Semantics(header: true, child: const Text('Academic Overview')),
         actions: [
           Semantics(
             label: 'Pengaturan mode gelap',
-            value: isDark ? 'Aktif' : 'Nonaktif',
             toggled: isDark,
-            child: Row(
-              children: [
-                Icon(
-                  isDark ? Icons.dark_mode : Icons.light_mode,
-                  semanticLabel: isDark ? 'Ikon mode gelap' : 'Ikon mode terang',
-                ),
-                const SizedBox(width: 4),
-                CupertinoSwitch(
-                  value: isDark,
-                  onChanged: onDarkChanged,
-                ),
-                const SizedBox(width: 12),
-              ],
-            ),
+            child: Row(children: [
+              Icon(isDark ? Icons.dark_mode : Icons.light_mode,
+                  semanticLabel: isDark ? 'Mode gelap' : 'Mode terang'),
+              const SizedBox(width: 4),
+              CupertinoSwitch(value: isDark, onChanged: onToggle),
+              const SizedBox(width: 12),
+            ]),
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // Breakpoint responsif:
-          // < 600: HP Portrait (1 kolom)
-          // 600 - 900: HP Landscape / Tablet Portrait (2 kolom)
-          // >= 900: Layar Desktop / Tablet Landscape (4 kolom)
-          final int columns;
-          if (constraints.maxWidth >= 900) {
-            columns = 4;
-          } else if (constraints.maxWidth >= 600) {
-            columns = 2;
-          } else {
-            columns = 1;
-          }
-
-          return GridView.count(
-            padding: const EdgeInsets.all(16),
-            crossAxisCount: columns,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 2.6,
-            children: const [
-              DashboardCard(title: 'Assignments', value: '8'),
-              DashboardCard(title: 'Attendance', value: '92%'),
-              DashboardCard(title: 'Portfolio', value: 'Ready'),
-              DashboardCard(title: 'Current week', value: '02'),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class DashboardCard extends StatelessWidget {
-  const DashboardCard({required this.title, required this.value, super.key});
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: '$title: $value',
-      readOnly: true,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Expanded(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // ── Header profil ──
+            Semantics(
+              label: 'Profil: Febryan Akhmad, NIM 244107020180, Teknik Informatika, Semester 5',
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primaryContainer, cs.secondaryContainer],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(20),
                 child: ExcludeSemantics(
-                  child: Text(title),
+                  child: Row(children: [
+                    CircleAvatar(
+                      radius: 34,
+                      backgroundColor: cs.primary,
+                      child: Text('FA', style: tt.titleLarge?.copyWith(
+                        color: cs.onPrimary, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Febryan Akhmad', style: tt.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, color: cs.onPrimaryContainer)),
+                          Text('NIM: 244107020180', style: tt.bodyMedium?.copyWith(
+                            color: cs.onSecondaryContainer)),
+                          Text('Teknik Informatika • Semester 5', style: tt.bodyMedium?.copyWith(
+                            color: cs.onSecondaryContainer)),
+                        ],
+                      ),
+                    ),
+                  ]),
                 ),
               ),
-              ExcludeSemantics(
-                child: Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ),
-            ],
-          ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ── Kartu responsif: 1 kolom (sempit) / 2 kolom (lebar) ──
+            LayoutBuilder(builder: (context, box) {
+              final wide = box.maxWidth >= 600;
+              if (!wide) {
+                return Column(
+                  children: [for (final c in _cards) Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildCard(context, c),
+                  )],
+                );
+              }
+              return Column(children: [
+                for (int i = 0; i < _cards.length; i += 2)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(children: [
+                      Expanded(child: _buildCard(context, _cards[i])),
+                      const SizedBox(width: 10),
+                      Expanded(child: i + 1 < _cards.length
+                          ? _buildCard(context, _cards[i + 1])
+                          : const SizedBox.shrink()),
+                    ]),
+                  ),
+              ]);
+            }),
+          ],
         ),
       ),
     );
