@@ -14,7 +14,7 @@ Membuat project `week3_navigation` dengan GoRouter untuk memahami konsep dasar n
 
 | Home Page | Detail Page |
 |:---------:|:-----------:|
-| ![Home Page](screenshots/1.jpeg) | ![Detail Page](screenshots/2.jpeg) |
+| ![Home Page](week3_todo/screenshots/1.jpeg) | ![Detail Page](week3_todo/screenshots/2.jpeg) |
 
 > Halaman Home menampilkan 10 item. Tap item → navigasi ke Detail dengan path parameter (`:id`). Path berubah mengikuti layar aktif.
 
@@ -37,11 +37,11 @@ Menambahkan Riverpod ke project `week3_todo` untuk mengelola state ToDo secara g
 
 | State Kosong | Dialog Tambah | Input Tugas |
 |:------------:|:-------------:|:-----------:|
-| ![Kosong](screenshots/3.jpeg) | ![Dialog](screenshots/5.jpeg) | ![Input](screenshots/6.jpeg) |
+| ![Kosong](week3_todo/screenshots/3.jpeg) | ![Dialog](week3_todo/screenshots/5.jpeg) | ![Input](week3_todo/screenshots/6.jpeg) |
 
 | Tugas Ditambahkan | Toggle Selesai |
 |:-----------------:|:--------------:|
-| ![Ditambahkan](screenshots/7.jpeg) | ![Toggle](screenshots/8.jpeg) |
+| ![Ditambahkan](week3_todo/screenshots/7.jpeg) | ![Toggle](week3_todo/screenshots/8.jpeg) |
 
 ---
 
@@ -54,7 +54,7 @@ Membuat halaman Statistik yang menggunakan `AsyncNotifier` untuk mensimulasikan 
 
 | Statistik (Data Lama) | Statistik (Data Baru — dari ToDo) |
 |:---------------------:|:---------------------------------:|
-| ![Stats Lama](screenshots/12.jpeg) | ![Stats Baru](screenshots/13.jpeg) |
+| ![Stats Lama](week3_todo/screenshots/12.jpeg) | ![Stats Baru](week3_todo/screenshots/13.jpeg) |
 
 > **Sebelum refactoring:** Stats menampilkan data statis generik (Pengguna Aktif, Transaksi).  
 > **Sesudah refactoring:** Stats dihitung dari data ToDo sesungguhnya + progress bar.
@@ -69,11 +69,11 @@ Mengintegrasikan semua fitur: GoRouter dengan `StatefulShellRoute`, NavigationBa
 
 | TodoPage + NavigationBar | Filter Dropdown | Statistik + Progress |
 |:------------------------:|:---------------:|:--------------------:|
-| ![Todo Nav](screenshots/9.jpeg) | ![Filter](screenshots/11.jpeg) | ![Stats Progress](screenshots/13.jpeg) |
+| ![Todo Nav](week3_todo/screenshots/9.jpeg) | ![Filter](week3_todo/screenshots/11.jpeg) | ![Stats Progress](week3_todo/screenshots/13.jpeg) |
 
 | State Kosong Tab Stats | Tambah Tugas | Tugas Ditambahkan |
 |:----------------------:|:------------:|:-----------------:|
-| ![Stats Empty](screenshots/13.jpeg) | ![Add Dialog](screenshots/14.jpeg) | ![Added](screenshots/15.jpeg) |
+| ![Stats Empty](week3_todo/screenshots/13.jpeg) | ![Add Dialog](week3_todo/screenshots/14.jpeg) | ![Added](week3_todo/screenshots/15.jpeg) |
 
 ---
 
@@ -105,7 +105,7 @@ Menulis unit test dan widget test untuk memverifikasi fungsionalitas.
 
 **Hasil Testing:**
 
-![Added](screenshots/16.png)
+![Added](week3_todo/screenshots/16.png)
 
 ---
 
