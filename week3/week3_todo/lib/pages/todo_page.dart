@@ -1,62 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/todo_provider.dart';
-import 'product_page.dart';
-import 'stats_page.dart';
+import '../providers/filtered_todo_provider.dart';
+import '../widgets/todo_tile.dart';
 
+// ──────────────────────────────────────────────────────────────────
+// TodoPage — Halaman utama daftar tugas.
+//
+// Setelah refactoring:
+// 1. ListTile diekstrak ke TodoTile (widget terpisah).
+// 2. Filter (semua/belum/selesai) menggunakan derived provider.
+// 3. Navigasi diganti GoRouter + NavigationBar (di shell).
+// ──────────────────────────────────────────────────────────────────
 class TodoPage extends ConsumerWidget {
   const TodoPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todos = ref.watch(todoListProvider);
+    // ref.watch di build() — reaktif
+    final filteredIndices = ref.watch(filteredTodoIndicesProvider);
+    final currentFilter = ref.watch(todoFilterProvider);
+    final allTodos = ref.watch(todoListProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('ToDo Riverpod'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_bag),
-            tooltip: 'Produk (AsyncValue)',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProductPage()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            tooltip: 'Statistik',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const StatsPage()),
-            ),
+          // ── Dropdown filter ──
+          // Mengubah todoFilterProvider untuk memfilter daftar
+          PopupMenuButton<TodoFilter>(
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Filter',
+            onSelected: (filter) {
+              // ref.read di callback — set filter baru via notifier method
+              ref.read(todoFilterProvider.notifier).setFilter(filter);
+            },
+            itemBuilder: (_) => [
+              _filterMenuItem('Semua', TodoFilter.all, currentFilter),
+              _filterMenuItem('Belum selesai', TodoFilter.pending, currentFilter),
+              _filterMenuItem('Selesai', TodoFilter.completed, currentFilter),
+            ],
           ),
         ],
       ),
-      body: todos.isEmpty
+
+      // ── Body: tampilkan list berdasarkan filter ──
+      body: allTodos.isEmpty
           ? const Center(child: Text('Belum ada tugas'))
-          : ListView.builder(
-              itemCount: todos.length,
-              itemBuilder: (context, index) => ListTile(
-                leading: Checkbox(
-                  value: todos[index].done,
-                  onChanged: (_) =>
-                      ref.read(todoListProvider.notifier).toggle(index),
+          : filteredIndices.isEmpty
+              ? const Center(child: Text('Tidak ada tugas dengan filter ini'))
+              : ListView.builder(
+                  itemCount: filteredIndices.length,
+                  itemBuilder: (_, i) =>
+                      // Gunakan TodoTile yang sudah diekstrak
+                      TodoTile(index: filteredIndices[i]),
                 ),
-                title: Text(
-                  todos[index].title,
-                  style: TextStyle(
-                      decoration: todos[index].done
-                          ? TextDecoration.lineThrough
-                          : null),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () =>
-                      ref.read(todoListProvider.notifier).remove(index),
-                ),
-              ),
-            ),
+
+      // ── FAB untuk tambah tugas baru ──
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),
@@ -64,6 +64,28 @@ class TodoPage extends ConsumerWidget {
     );
   }
 
+  /// Helper untuk membuat PopupMenuItem filter dengan tanda centang
+  PopupMenuItem<TodoFilter> _filterMenuItem(
+    String label,
+    TodoFilter value,
+    TodoFilter current,
+  ) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(
+            value == current ? Icons.radio_button_checked : Icons.radio_button_off,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
+  /// Dialog untuk menambah tugas baru
   void _showAddDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
     showDialog(
@@ -79,10 +101,12 @@ class TodoPage extends ConsumerWidget {
           FilledButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
+                // ref.read di callback — tambah tugas
                 ref
                     .read(todoListProvider.notifier)
                     .add(controller.text.trim());
               }
+              controller.clear();
               Navigator.pop(context);
             },
             child: const Text('Tambah'),

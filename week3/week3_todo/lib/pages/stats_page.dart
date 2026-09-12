@@ -21,7 +21,7 @@ class StatsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Statistik'),
+        title: const Text('📊 Statistik'),
         actions: [
           // ── ref.read: dipakai di callback, bukan di build() ──
           // Tombol refresh di AppBar untuk memuat ulang data
