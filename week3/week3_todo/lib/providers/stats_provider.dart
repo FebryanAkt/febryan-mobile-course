@@ -1,14 +1,16 @@
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'todo_provider.dart';
 
 // ──────────────────────────────────────────────────────────────────
 // Model data statistik (immutable class).
-// Setiap item statistik memiliki label dan value.
+// Setiap item statistik memiliki label, value, dan icon name.
 // ──────────────────────────────────────────────────────────────────
 class StatItem {
-  const StatItem({required this.label, required this.value});
+  const StatItem({required this.label, required this.value, this.icon});
   final String label;
   final int value;
+  final String? icon;
 
   @override
   bool operator ==(Object other) =>
@@ -28,65 +30,55 @@ class StatItem {
 // ──────────────────────────────────────────────────────────────────
 // AsyncNotifier untuk mengelola state statistik secara asinkron.
 //
-// - build()  : dipanggil otomatis saat provider pertama kali dibaca.
-//              Mensimulasikan fetch data dengan delay 2 detik dan
-//              kemungkinan gagal 30%.
-// - refresh(): me-reset state ke loading, lalu fetch ulang.
-// - _fetch() : method internal yang melakukan "network call" palsu.
+// Statistik dihitung dari data ToDo yang sesungguhnya, tetapi
+// proses "fetch" disimulasikan dengan delay dan kemungkinan error
+// untuk mendemonstrasikan AsyncValue (loading, error, data).
 //
-// Semua perubahan state dilakukan secara IMMUTABLE — kita selalu
-// mengganti `state` dengan objek AsyncValue baru, bukan memutasi.
+// - build()  : dipanggil otomatis saat provider pertama kali dibaca.
+// - refresh(): me-reset state ke loading, lalu fetch ulang.
+// - _fetch() : simulasi network call yang menghitung stats dari todos.
 // ──────────────────────────────────────────────────────────────────
 class StatsNotifier extends AsyncNotifier<List<StatItem>> {
-  // Random instance untuk simulasi kegagalan 30%
   final Random _random = Random();
 
-  /// Dipanggil otomatis saat provider pertama kali di-watch.
-  /// Mengembalikan Future yang resolve menjadi list statistik,
-  /// atau throw exception dengan probabilitas 30%.
   @override
   Future<List<StatItem>> build() async {
-    return _fetch();
+    // ref.watch agar stats otomatis di-rebuild saat todo berubah
+    final todos = ref.watch(todoListProvider);
+    return _fetch(todos);
   }
 
   /// Memuat ulang data statistik.
   /// 1. Set state ke AsyncLoading agar UI menampilkan spinner.
-  /// 2. Gunakan AsyncValue.guard() untuk menangkap error secara aman
-  ///    tanpa try-catch manual.
+  /// 2. Gunakan AsyncValue.guard() untuk menangkap error secara aman.
   Future<void> refresh() async {
-    // Set ke loading — UI akan menampilkan spinner
     state = const AsyncLoading<List<StatItem>>();
-    // guard() otomatis menangkap exception dan mengubahnya
-    // menjadi AsyncError, atau AsyncData jika berhasil
-    state = await AsyncValue.guard(() => _fetch());
+    final todos = ref.read(todoListProvider);
+    state = await AsyncValue.guard(() => _fetch(todos));
   }
 
   /// Simulasi network call:
-  /// - Delay 2 detik (seolah-olah request ke server)
+  /// - Delay 2 detik (seolah-olah menghitung di server)
   /// - 30% kemungkinan gagal (throw exception)
-  /// - 70% kemungkinan berhasil (return list 3 item)
-  Future<List<StatItem>> _fetch() async {
-    // Simulasi latency jaringan
+  /// - 70% berhasil → hitung statistik dari data ToDo sesungguhnya
+  Future<List<StatItem>> _fetch(List<Todo> todos) async {
     await Future.delayed(const Duration(seconds: 2));
 
-    // Simulasi kegagalan 30%
     if (_random.nextDouble() < 0.3) {
       throw Exception('Gagal terhubung ke server');
     }
 
-    // Kembalikan data statistik (immutable list)
-    return const [
-      StatItem(label: 'Pengguna Aktif', value: 1250),
-      StatItem(label: 'Transaksi Hari Ini', value: 340),
-      StatItem(label: 'Pendapatan (Juta)', value: 75),
+    final total = todos.length;
+    final completed = todos.where((t) => t.done).length;
+    final pending = total - completed;
+
+    return [
+      StatItem(label: 'Total Tugas', value: total, icon: 'assignment'),
+      StatItem(label: 'Selesai', value: completed, icon: 'check_circle'),
+      StatItem(label: 'Belum Selesai', value: pending, icon: 'pending'),
     ];
   }
 }
 
-// ──────────────────────────────────────────────────────────────────
-// Provider declaration dengan tipe eksplisit.
-// AsyncNotifierProvider<StatsNotifier, List<StatItem>>
-// memastikan tipe notifier dan state jelas, tidak ambigu.
-// ──────────────────────────────────────────────────────────────────
 final statsProvider =
     AsyncNotifierProvider<StatsNotifier, List<StatItem>>(StatsNotifier.new);
