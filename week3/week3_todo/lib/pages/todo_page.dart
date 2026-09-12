@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/todo_provider.dart';
 import 'product_page.dart';
+import 'stats_page.dart';
 
 class TodoPage extends ConsumerWidget {
   const TodoPage({super.key});
@@ -20,6 +21,14 @@ class TodoPage extends ConsumerWidget {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ProductPage()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            tooltip: 'Statistik',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StatsPage()),
             ),
           ),
         ],
