@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../data/providers.dart';
-import 'post_tile.dart';
 
-class PostListPage extends ConsumerWidget {
-  const PostListPage({super.key});
+class PostDetailPage extends ConsumerWidget {
+  const PostDetailPage({super.key, required this.postId});
+
+  final int postId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final postsAsync = ref.watch(postListProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Posts API'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () =>
-                ref.read(postListProvider.notifier).refresh(),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text('Post #$postId')),
       body: postsAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator()),
@@ -43,22 +34,22 @@ class PostListPage extends ConsumerWidget {
           ),
         ),
         data: (posts) {
-          if (posts.isEmpty) {
+          final post = posts.where((p) => p.id == postId).firstOrNull;
+          if (post == null) {
             return const Center(
-                child: Text('Belum ada data dari server.'));
+                child: Text('Post tidak ditemukan.'));
           }
-          return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(postListProvider.notifier).refresh(),
-            child: ListView.builder(
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                return PostTile(
-                  post: post,
-                  onTap: () => context.go('/post/${post.id}'),
-                );
-              },
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(post.title,
+                    style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 16),
+                Text(post.body,
+                    style: Theme.of(context).textTheme.bodyLarge),
+              ],
             ),
           );
         },
