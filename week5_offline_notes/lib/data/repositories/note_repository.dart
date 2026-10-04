@@ -1,6 +1,14 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 import '../local/db.dart';
 import '../local/note.dart';
+
+final noteRepositoryProvider = Provider((ref) => NoteRepository());
+
+final notesProvider = FutureProvider<List<Note>>(
+  (ref) => ref.watch(noteRepositoryProvider).fetchNotes(),
+  retry: (retryCount, lastException) => null,
+);
 
 class NoteRepository {
   NoteRepository({Future<Database> Function()? openDb})
@@ -12,6 +20,18 @@ class NoteRepository {
     final db = await _openDb();
     final rows = await db.query('notes', orderBy: 'updated_at DESC');
     return rows.map(Note.fromMap).toList();
+  }
+
+  Future<Note?> getNoteById(int id) async {
+    final db = await _openDb();
+    final rows = await db.query(
+      'notes',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return Note.fromMap(rows.first);
   }
 
   Future<Note> addNote({required String title, String body = ''}) async {

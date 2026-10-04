@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../data/repositories/note_repository.dart';
-import '../data/local/note.dart';
 import '../data/sync.dart';
+import '../widgets/note_tile.dart';
 
-final noteRepositoryProvider = Provider((ref) => NoteRepository());
 
-final notesProvider = FutureProvider<List<Note>>((ref) {
-  return ref.watch(noteRepositoryProvider).fetchNotes();
-});
 
 final dirtyCountProvider = FutureProvider<int>((ref) {
   return ref.watch(noteRepositoryProvider).countDirty();
@@ -62,24 +59,18 @@ class NotesPage extends ConsumerWidget {
                 itemCount: notes.length,
                 itemBuilder: (context, index) {
                   final note = notes[index];
-                  return ListTile(
-                    title: Text(note.title),
-                    subtitle: Text(note.body),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (note.dirty)
-                          const Icon(Icons.cloud_off, color: Colors.orange, size: 18),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () async {
-                            await ref.read(noteRepositoryProvider).deleteNote(note.id!);
-                            ref.invalidate(notesProvider);
-                            ref.invalidate(dirtyCountProvider);
-                          },
-                        ),
-                      ],
-                    ),
+                  return NoteTile(
+                    note: note,
+                    onTap: () {
+                      if (note.id != null) {
+                        context.push('/note/${note.id}');
+                      }
+                    },
+                    onDelete: () async {
+                      await ref.read(noteRepositoryProvider).deleteNote(note.id!);
+                      ref.invalidate(notesProvider);
+                      ref.invalidate(dirtyCountProvider);
+                    },
                   );
                 },
               ),
