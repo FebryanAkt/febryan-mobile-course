@@ -22,6 +22,19 @@ class NoteDetailPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Catatan'),
+        actions: [
+          noteAsync.when(
+            data: (note) => note != null
+                ? IconButton(
+                    icon: const Icon(Icons.edit),
+                    tooltip: 'Edit Catatan',
+                    onPressed: () => _showEditDialog(context, ref, note),
+                  )
+                : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: noteAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -96,6 +109,41 @@ class NoteDetailPage extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, WidgetRef ref, Note note) {
+    final titleCtrl = TextEditingController(text: note.title);
+    final bodyCtrl = TextEditingController(text: note.body);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Catatan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Judul')),
+            TextField(controller: bodyCtrl, decoration: const InputDecoration(labelText: 'Isi')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () async {
+              if (titleCtrl.text.trim().isEmpty) return;
+              await ref.read(noteRepositoryProvider).updateNote(
+                    id: note.id!,
+                    title: titleCtrl.text.trim(),
+                    body: bodyCtrl.text.trim(),
+                  );
+              ref.invalidate(noteDetailProvider(note.id!));
+              ref.invalidate(notesProvider);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
       ),
     );
   }

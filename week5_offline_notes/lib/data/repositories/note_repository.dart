@@ -52,6 +52,22 @@ class NoteRepository {
     );
   }
 
+  Future<void> updateNote({
+    required int id,
+    required String title,
+    String body = '',
+  }) async {
+    final db = await _openDb();
+    final note = Note(
+      id: id,
+      title: title,
+      body: body,
+      updatedAt: DateTime.now(),
+      dirty: true,
+    );
+    await db.update('notes', note.toMap(), where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<void> deleteNote(int id) async {
     final db = await _openDb();
     await db.delete('notes', where: 'id = ?', whereArgs: [id]);

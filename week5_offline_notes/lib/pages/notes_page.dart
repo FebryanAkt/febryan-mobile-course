@@ -48,6 +48,11 @@ class NotesPage extends ConsumerWidget {
             loading: () => const SizedBox.shrink(),
             error: (_, _) => const SizedBox.shrink(),
           ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Pengaturan',
+            onPressed: () => context.push('/settings'),
+          ),
         ],
       ),
       body: notesAsync.when(

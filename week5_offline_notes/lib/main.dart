@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'pages/notes_page.dart';
 import 'pages/note_detail_page.dart';
 import 'pages/settings_page.dart';
+import 'data/prefs.dart';
 
 final router = GoRouter(
   routes: [
@@ -18,10 +19,17 @@ final router = GoRouter(
         return NoteDetailPage(id: id);
       },
     ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsPage(),
+    ),
   ],
 );
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = PrefsRepository();
+  await prefs.markOpenedNow();
   runApp(const ProviderScope(child: MyApp()));
 }
 
