@@ -34,8 +34,26 @@ class FcmService {
       await onToken(newToken);
     });
 
-    // 4. Berlangganan topik kampus untuk notifikasi broadcast
-    await messaging.subscribeToTopic('pengumuman-kampus');
+    // Topik ini untuk broadcast pengumuman kampus.
+    await subscribeToTopic('pengumuman-kampus');
+  }
+
+  /// Subscribe ke topik broadcast, seperti semua mahasiswa atau satu kelas.
+  /// Pesan personal harus dikirim backend ke token perangkat.
+  static Future<void> subscribeToTopic(String topic) async {
+    _validateTopic(topic);
+    await FirebaseMessaging.instance.subscribeToTopic(topic);
+  }
+
+  static Future<void> unsubscribeFromTopic(String topic) async {
+    _validateTopic(topic);
+    await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+  }
+
+  static void _validateTopic(String topic) {
+    if (topic.trim().isEmpty || topic.contains(RegExp(r'\s'))) {
+      throw ArgumentError.value(topic, 'topic', 'Nama topik tidak boleh kosong atau mengandung spasi.');
+    }
   }
 
   /// Fungsi untuk kirim token ke backend API

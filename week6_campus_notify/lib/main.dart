@@ -3,21 +3,53 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'messaging/push_service.dart';
 import 'services/fcm_service.dart';
+
+final _navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  registerBackgroundHandler();
 
   await FcmService.initFcmToken(
     onToken: (token) async {
       await FcmService.sendTokenToBackend(token);
     },
   );
+  await initLocalNotifications();
 
   runApp(
     const ProviderScope(
       child: MyApp(),
+    ),
+  );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    listenForeground(_openPushRoute);
+    handleTerminated(_openPushRoute);
+  });
+}
+
+void _openPushRoute(String route) {
+  if (route == '/') return;
+
+  final announcementId = route.startsWith('/pengumuman/')
+      ? route.substring('/pengumuman/'.length)
+      : null;
+  _navigatorKey.currentState?.push(
+    MaterialPageRoute<void>(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: const Text('Pengumuman')),
+        body: Center(
+          child: Text(
+            announcementId == null
+                ? 'Tujuan notifikasi: $route'
+                : 'Membuka pengumuman #$announcementId',
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -28,6 +60,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Campus Notify',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
