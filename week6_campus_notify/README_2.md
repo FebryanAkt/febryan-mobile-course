@@ -624,9 +624,11 @@ Select-String -Path "lib/core/*.dart", "lib/features/**/domain/**/*.dart" -Patte
    00:00 +7: AnnouncementRepositoryImpl & UseCase getAnnouncementById returns matching announcement
    00:00 +8: AnnouncementRepositoryImpl & UseCase getAnnouncementById returns failure when id not found
    00:00 +9: AnnouncementRepositoryImpl & UseCase GetAnnouncements usecase calls repository.fetchAnnouncements
-   00:00 +9: All tests passed!
+   00:00 +10: GetAnnouncements Use Case (Pure Domain Test) GetAnnouncements meneruskan daftar pengumuman dari repository palsu
+   00:00 +11: GetAnnouncements Use Case (Pure Domain Test) GetAnnouncements meneruskan failure tanpa melempar exception mentah
+   00:00 +11: All tests passed!
    ```
-   **9/9 Unit Tests Berhasil Lolos (PASS)** ✅.
+   **11/11 Unit Tests Berhasil Lolos (PASS)** ✅.
 
 ---
 
@@ -635,7 +637,81 @@ Select-String -Path "lib/core/*.dart", "lib/features/**/domain/**/*.dart" -Patte
 Refactoring Clean Architecture pada fitur `announcements` dinyatakan **SELESAI**:
 - ✅ Tiga pemeriksaan sterilitas menghasilkan **0 temuan** pelanggaran.
 - ✅ `flutter analyze` bersih tanpa warning atau lint error.
-- ✅ Seluruh pengujian unit berjalan sukses dan hijau.
+- ✅ Seluruh pengujian unit berjalan sukses dan hijau (11/11 tests pass).
 - ✅ Tampilan dan fungsionalitas aplikasi berjalan identik seperti sebelum refactoring tanpa degradasi performa atau regresi fitur.
+
+---
+
+# AI Challenge (Minggu 7 — Clean Architecture)
+
+> **Konteks:** Evaluasi Reorganisasi Clean Architecture, Penilaian Over-Engineering, dan Verifikasi Checklist  
+> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 5: AI Challenge)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#5)
+
+---
+
+## 1. Prompt Asli AI Challenge
+
+Berikut adalah prompt tantangan yang diajukan:
+
+```text
+Project Flutter saya: campus_notify (auth + FCM + daftar pengumuman).
+Kondisi kini: folder lib/{data, providers, pages, messaging},
+repository tercampur dengan implementasi, widget memanggil Dio langsung.
+Tugas:
+1. Usulkan struktur feature-first Clean Architecture
+   (presentation/domain/data) untuk fitur auth + announcements.
+2. Untuk tiap file lama, sebutkan tujuan barunya (pindah/pecah/hapus).
+3. Tandai bagian yang over-engineering bila diterapkan ke CRUD sederhana,
+   dan kapan use case benar-benar dibutuhkan vs repository langsung.
+4. Tunjukkan wiring DI dengan Riverpod (tanpa package DI tambahan).
+Jelaskan trade-off setiap keputusan.
+```
+
+---
+
+## 2. Output & Draf Usulan Awal AI
+
+### a. Usulan Struktur Folder oleh AI
+AI menyarankan pembagian sub-fitur lengkap untuk `auth` dan `announcements` dengan setiap layer memiliki `entities`, `repositories`, `usecases`, `models`, `datasources`, `providers`, dan `pages`. AI juga membuat 6 use case terpisah untuk setiap aksi individual (misal `LoginUseCase`, `LogoutUseCase`, `GetAnnouncementsUseCase`, `GetAnnouncementDetailUseCase`, `SubscribeTopicUseCase`, `UnsubscribeTopicUseCase`).
+
+### b. Usulan Dependency Injection oleh AI
+AI menyarankan penggunaan Riverpod untuk menyuntikkan repository ke dalam use case, dan use case ke dalam notifier/provider.
+
+---
+
+## 3. AI Verification Checklist & Hasil Audit
+
+| No | Checklist Verifikasi Codelab | Status | Hasil Evaluasi & Tindakan |
+| :---: | :--- | :---: | :--- |
+| 1 | **Apakah interface repository tinggal di `domain` dan implementasi di `data`?** | **LULUS** ✅ | Terpisah tegas: abstract class `AnnouncementRepository` di `domain/repositories/` dan `AnnouncementRepositoryImpl` di `data/repositories/`. |
+| 2 | **Apakah `domain` bebas import Flutter / Dio / SQLite / Firebase?** | **LULUS** ✅ | Terbukti 100% steril lewat grep: `0 temuan` import framework UI/platform pada `lib/core` dan `lib/features/*/domain`. Draf AI yang menyarankan anotasi `@immutable` dari Flutter ditolak demi menjaga kemurnian Dart. |
+| 3 | **Apakah AI membuat use case untuk tiap CRUD satu-baris? (Over-Engineering Check)** | **DISELEKSI** 🛑 | Draf AI membuat use case terpisah untuk setiap pemanggilan satu baris. Ini diidentifikasi sebagai **over-engineering**. Keputusan: Hanya buat use case untuk alur utama yang memiliki aturan bisnis (`GetAnnouncements`). Aksi trivial satu-baris dapat langsung menghubungkan repository ke notifier. |
+| 4 | **Apakah entity bebas mapping (`toMap`/`fromMap`/`toJson` hanya di model)?** | **LULUS** ✅ | Entity `Announcement` murni berisi properti objek domain. Seluruh serialisasi JSON/Map ditempatkan eksklusif pada `AnnouncementModel` di layer data. |
+| 5 | **Apakah wiring DI terpusat di provider dan widget tidak `new Repository()` sendiri?** | **LULUS** ✅ | Terpusat di `announcement_providers.dart`. Widget `HomePage` hanya membaca state via `ref.watch(announcementsProvider)`. |
+
+---
+
+## 4. Tabel Usulan AI vs Keputusan Final Developer
+
+| Komponen / Topik | Usulan Awal AI | Keputusan Final Developer | Alasan Teknis & Trade-Off |
+| :--- | :--- | :--- | :--- |
+| **Granularitas Use Case** | Membuat use case untuk setiap aksi kecil (misal `LogoutUseCase`, `ToggleTopicUseCase`). | Hanya membuat use case yang merepresentasikan logika bisnis inti (`GetAnnouncements`). | **Menghindari Boilerplate Explosion:** Membuat kelas use case untuk operasi satu baris yang hanya meneruskan parameter ke repository tanpa transformasi adalah pemborosan kode (*accidental complexity*). |
+| **Penyimpanan Format Data & Error Handling** | Menyarankan library pihak ketiga `dartz` / `fpdart` untuk tipe data `Either<Failure, T>`. | Menggunakan fitur bawaan bahasa **Dart Record** `({T data, Failure? failure})`. | **Zero Dependency Overhead:** Dart Record (tersedia sejak Dart 3) memberikan keamanan tipe data (*type-safety*) yang identik tanpa menambah ukuran build (*APK bloat*) atau dependensi eksternal. |
+| **Kemurnian Domain Layer** | Menyarankan import `package:flutter/foundation.dart` untuk `@immutable`. | Menggunakan constructor `const` murni Dart tanpa import package luar. | **Sterilitas Domain:** Memastikan layer domain 100% independen dari Flutter SDK sehingga dapat dijalankan dan diuji di lingkungan Dart murni secara instan. |
+| **Struktur Halaman UI** | Memindahkan seluruh file `lib/pages/` dan merombak file rute GoRouter. | Menjaga stabilitas rute di `lib/pages/` dan mengintegrasikan provider Clean Architecture ke dalam widget. | **Mencegah Regresi Fitur:** Menjaga agar deep linking FCM push notification dari Minggu 6 tetap berfungsi stabil tanpa risiko *breaking changes* pada navigasi. |
+
+---
+
+## 5. Kapan Use Case Benar-Benar Dibutuhkan?
+
+1. **Use Case Wajib Dibuat Kapan:**
+   - Ketika ada **validasi atau logika bisnis** sebelum/sesudah interaksi data (contoh: validasi format data, kalkulasi, pemfilteran).
+   - Ketika ada **orkestrasi multi-repository** (contoh: mengambil pengumuman dari server lalu menyimpan log riwayat ke analitik lokal).
+   - Ketika ada **aturan offline-first / caching** (contoh: cek database lokal terlebih dahulu, jika kosong baru request ke API jaringan).
+
+2. **Kapan Repository Langsung ke Notifier Sudah Cukup:**
+   - Untuk operasi CRUD sederhana satu baris (misal membaca detail berdasarkan ID tunggal atau menghapus item) di mana data langsung diteruskan apa adanya tanpa logika bisnis tambahan.
+   - Pada proyek kecil hingga menengah, pendekatan ini menghemat waktu pemeliharaan tanpa mengorbankan kemampuan pengujian (*testability*).
+
 
 
