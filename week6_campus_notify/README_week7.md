@@ -1,7 +1,7 @@
 # Praktikum 1: Audit Layer Project Lama (Minggu 7 — Clean Architecture)
 
 > **Proyek yang Diaudit:** `week6_campus_notify`  
-> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 2: Praktikum 1)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#2)
+
 
 ---
 
@@ -924,6 +924,99 @@ Berikut adalah matriks kesalahan umum saat mengadopsi Clean Architecture di Flut
 - [x] **Widget tidak menginstansiasi repositori secara manual (seluruhnya melalui provider Riverpod).**
 - [x] **Aplikasi berjalan identik sebelum dan sesudah refactoring.**
 - [x] **`flutter analyze` bersih (No issues found) dan seluruh 25 unit test lulus.**
+
+---
+
+# Tugas, Refleksi, dan Referensi (Minggu 7 — Clean Architecture)
+
+> **Konteks:** Penyelesaian Mini Project / Industry Challenge, Refleksi Teknis Arsitektur, dan Referensi Pendukung  
+> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 7: Tugas, refleksi, dan referensi)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#7)
+
+---
+
+## 1. Rangkuman Penyelesaian Mini Project (Industry Challenge)
+
+Pada tugas ini, proyek **`week6_campus_notify`** berhasil direfactor secara komprehensif menerapkan arsitektur **Feature-First Clean Architecture** tanpa merusak fungsionalitas FCM push notification, autentikasi, maupun deep linking yang telah dibangun:
+
+1. **Pemisahan Layer Penuh pada Dua Fitur (`announcements` & `auth`):**
+   - **`domain/` (Murni Dart):** Berisi entitas bisnis murni (`Announcement`, `UserSession`), hierarki kegagalan (`Failure`), abstract interface repository (`AnnouncementRepository`, `AuthRepository`), dan use cases (`GetAnnouncements`, `LoginUseCase`). Bebas 100% dari dependensi framework Flutter, Dio, SQLite, maupun Firebase.
+   - **`data/`:** Berisi representasi DTO model data (`AnnouncementModel`, `UserSessionModel`) yang mengisolasi serialisasi (`fromMap`, `toMap`, `toEntity`), serta implementasi konkret repositori (`AnnouncementRepositoryImpl`, `AuthRepositoryImpl`).
+   - **`presentation/`:** Berisi wiring Dependency Injection Riverpod (`announcement_providers.dart`, `auth_providers.dart`) dan halaman antarmuka (`HomePage`, `LoginPage`) yang hanya membaca state reaktif tanpa menyentuh data mentah.
+
+2. **Pembuktian Aturan Dependensi (The Dependency Rule):**
+   - Hasil audit 3 perintah grep sterilitas menunjukkan **0 temuan** pelanggaran:
+     - Presentation steril dari data mentah (`Dio(`, `openDatabase`, `FlutterSecureStorage`, `jsonDecode`).
+     - Domain steril dari framework & package luar (`flutter`, `dio`, `sqflite`, `firebase`).
+
+3. **Perilaku Aplikasi Identik (Zero Regression):**
+   - Tampilan visual antarmuka, fungsionalitas token masking (`...MnRgb4`), tombol subscribe topik broadcast `pengumuman-kampus`, serta deep linking ke `/pengumuman/:id` berjalan identik 100% dengan kondisi sebelum refactor.
+
+4. **Pengujian Unit Tanpa Ketergantungan Eksternal:**
+   - Dibuat pengujian domain use case menggunakan Fake Repository (`FakeAnnouncementRepository`, `FakeAuthDomainRepository`) yang membuktikan logika bisnis dapat diuji secara murni dan instan tanpa emulator, database, maupun server jaringan asli.
+   - **Hasil Akhir:** Seluruh **25 checks dari 5 test suite lulus 100% (PASS)** dan `flutter analyze` bersih tanpa issue.
+
+---
+
+## 2. Refleksi Teknis
+
+### Pertanyaan 1: Mengapa interface repository harus tinggal di domain, bukan di data? Apa yang rusak bila dibalik?
+**Jawaban:**
+Berdasarkan prinsip **Dependency Inversion Principle (DIP)** dan aturan emas Clean Architecture (*The Dependency Rule*), layer **Domain** adalah inti bisnis aplikasi yang paling stabil dan tidak boleh memiliki dependensi ke layer luar.
+Jika interface repository diletakkan di layer **Data**, maka layer **Domain** (Use Case) terpaksa harus mengimpor layer **Data** untuk menggunakan kontrak tersebut.
+Hal-hal fatal yang rusak bila penempatan ini dibalik:
+1. **Arah Dependensi Menjadi Salah:** Domain akan bergantung ke Data (arah keluar), melanggar aturan arsitektur.
+2. **Ketergantungan Melingkar (Circular Dependency):** Data layer mengimplementasikan kontrak yang ada di Data, sementara Domain bergantung ke Data, dan Presentation bergantung ke Domain dan Data. Hal ini merusak modularitas kode.
+3. **Domain Kehilangan Kemurnian dan Kemandirian:** Layer domain menjadi rentan terikat dengan package eksternal layer data (misalnya bila file kontrak secara tidak sengaja mengimpor Dio atau SQLite).
+4. **Isolasi Pengujian Runtuh:** Pengujian unit murni pada use case tidak dapat dijalankan secara independen tanpa menarik dependensi layer data.
+Dengan menaruh interface di **Domain**, arah dependensi terbalik (*inverted*): **Data bergantung pada Domain** (karena `Data` mengimplementasikan interface milik `Domain`), sehingga layer domain tetap murni dan terlindungi dari perubahan teknologi infrastruktur luar.
+
+---
+
+### Pertanyaan 2: Kapan use case benar-benar dibutuhkan, dan kapan repository langsung ke notifier sudah cukup?
+**Jawaban:**
+- **Use Case Benar-Benar Dibutuhkan Ketika:**
+  1. Terdapat **logika bisnis murni, aturan validasi, atau kalkulasi** yang independen dari antarmuka (contoh: [`LoginUseCase`](file:///D:/Kuliah/Semester%205/Pemrograman%20Mobile/Week%201/week6_campus_notify/lib/features/auth/domain/usecases/login_usecase.dart) yang memvalidasi format email `@` dan panjang password $\ge 6$ karakter sebelum menyentuh repository).
+  2. Melibatkan **orkestrasi lintas repositori** (contoh: mengambil daftar pengumuman dari `AnnouncementRepository` lalu memicu pencatatan log riwayat ke `AuditRepository` dan sinkronisasi ke `CacheRepository`).
+  3. Operasi tersebut digunakan kembali (*reusable*) di beberapa notifier/halaman UI yang berbeda.
+- **Repository Langsung ke Notifier Sudah Cukup Ketika:**
+  1. Operasi tersebut berupa pemanggilan CRUD sederhana 1-baris tanpa transformasi, aturan bisnis, atau orkestrasi (contoh: mengambil data berdasarkan ID tunggal atau operasi toggle status sederhana).
+  2. Pada skenario ini, membuat use case hanya akan menghasilkan kelas pasif (*pass-through/forwarder*) yang menambah *boilerplate* tanpa memberikan nilai tambah nyata bagi arsitektur.
+
+---
+
+### Pertanyaan 3: Apa biaya over-engineering (use case per CRUD satu-baris) bagi tim kecil? Kapan biayanya sepadan?
+**Jawaban:**
+- **Biaya Over-Engineering bagi Tim Kecil:**
+  1. **Mental Overload & Boilerplate Explosion:** Setiap kali ada kebutuhan menambah satu field atau aksi kecil, developer harus membuat dan menyinkronkan 5–6 berkas berbeda (`Entity`, `Model`, `Repository Interface`, `Repository Impl`, `Use Case`, `Provider`). Ini memperlambat kecepatan rilis fitur (*time-to-market*).
+  2. **Beban Pemeliharaan (Accidental Complexity):** Kode yang terlalu banyak berkas dummy membuat navigasi proyek melelahkan, meningkatkan beban review pull request, dan mempersulit proses refactoring.
+  3. **Hambatan Onboarding:** Anggota tim baru atau junior akan kesulitan memahami esensi aplikasi karena terhalang oleh lapisan abstraksi yang tidak diperlukan.
+- **Kapan Biayanya Menjadi Sepadan:**
+  1. Ketika aplikasi berskala besar (*enterprise*) dengan aturan bisnis yang rumit dan sering berubah-ubah (misalnya sistem perbankan, e-commerce dengan ratusan aturan promo dan checkout).
+  2. Ketika tim pengembang berjumlah besar dan dibagi menjadi tim spesialis (misal tim backend/data terpisah dari tim UI).
+  3. Ketika sistem mewajibkan cakupan pengujian unit yang sangat ketat (*100% test coverage requirement*) untuk memenuhi audit kepatuhan industri.
+
+---
+
+### Pertanyaan 4: Bagian mana dari usulan AI yang Anda tolak atau sederhanakan, dan mengapa?
+**Jawaban:**
+1. **Penolakan Pembuatan Use Case untuk Setiap Aksi Trivial:** Draf AI mengusulkan pembuatan use case terpisah untuk setiap aksi kecil (misal `LogoutUseCase`, `ToggleTopicUseCase`, `GetAnnouncementDetailUseCase`). Ini ditolak karena tergolong over-engineering; disederhanakan dengan hanya membuat use case untuk alur utama yang memiliki aturan bisnis nyata ([`GetAnnouncements`](file:///D:/Kuliah/Semester%205/Pemrograman%20Mobile/Week%201/week6_campus_notify/lib/features/announcements/domain/usecases/get_announcements.dart) dan [`LoginUseCase`](file:///D:/Kuliah/Semester%205/Pemrograman%20Mobile/Week%201/week6_campus_notify/lib/features/auth/domain/usecases/login_usecase.dart)).
+2. **Penolakan Anotasi `@immutable` Flutter di Layer Domain:** AI menyarankan mengimpor `package:flutter/foundation.dart` pada entitas domain. Ditolak dan diganti dengan constructor `const` murni Dart agar layer domain 100% steril dari SDK Flutter dan dapat dieksekusi di lingkungan Dart murni.
+3. **Penolakan Package Pihak Ketiga `dartz` / `fpdart`:** AI mengusulkan penggunaan tipe `Either<Failure, T>` dari package luar. Ditolak untuk menghindari *dependency bloat* dan disederhanakan menggunakan fitur native bahasa **Dart Record** `({T data, Failure? failure})`.
+4. **Penolakan Perombakan Struktur Navigasi Halaman Eksisting:** AI mengusulkan memindahkan seluruh file halaman ke subfolder fitur dan memecah GoRouter secara radikal. Ditolak demi menjaga kestabilan route guard dan penanganan deep link notifikasi push FCM yang sudah berjalan baik di Minggu 6.
+
+---
+
+## 3. Referensi Pendukung
+
+- **Codelab Minggu 7:** [Polinema Mobile Codelab #07 - Clean Architecture](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html)
+- **Slide Perkuliahan:** Slide Week 7 Pemrograman Mobile: Clean Architecture & SOLID Principles (JTI Polinema)
+- **Dokumentasi Resmi Flutter Architecture:** [Flutter App Architecture Guide](https://docs.flutter.dev)
+- **Buku Arsitektur:** Robert C. Martin (Uncle Bob), *Clean Architecture: A Craftsman's Guide to Software Structure and Design*, Prentice Hall.
+- **State Management & DI:** [Flutter Riverpod Documentation](https://riverpod.dev)
+- **Fitur Bahasa Dart:** [Dart Records & Patterns Guide](https://dart.dev/language/records)
+- **Routing & Deep Linking:** [GoRouter Package Documentation](https://pub.dev/packages/go_router)
+- **Standar Keamanan Mobile:** [OWASP Mobile Top 10 Security Risks](https://owasp.org/www-project-mobile-top-10/)
+
 
 
 
