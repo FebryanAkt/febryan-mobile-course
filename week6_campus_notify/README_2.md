@@ -713,5 +713,218 @@ AI menyarankan penggunaan Riverpod untuk menyuntikkan repository ke dalam use ca
    - Untuk operasi CRUD sederhana satu baris (misal membaca detail berdasarkan ID tunggal atau menghapus item) di mana data langsung diteruskan apa adanya tanpa logika bisnis tambahan.
    - Pada proyek kecil hingga menengah, pendekatan ini menghemat waktu pemeliharaan tanpa mengorbankan kemampuan pengujian (*testability*).
 
+---
+
+# Refactoring, Testing, dan Error Umum (Minggu 7 — Clean Architecture)
+
+> **Konteks:** Refactoring Fitur Kedua (`auth`), Ekstraksi Fungsi Murni, Penanganan Failure, Unit Testing, dan Mitigasi Error  
+> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 6: Refactoring, testing, dan error umum)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#6)
+
+---
+
+## 1. Refactoring Challenge: Menerapkan Clean Architecture pada Fitur Kedua (`auth`)
+
+Agar arsitektur proyek konsisten (*tidak ada fitur yang bersih dan sisanya kotor*), fitur `auth` direfactor penuh ke pola Clean Architecture:
+
+### a. Domain Layer Fitur `auth` (Murni Dart)
+1. **Entity (`lib/features/auth/domain/entities/user_session.dart`):**
+   ```dart
+   class UserSession {
+     const UserSession({
+       required this.email,
+       required this.accessToken,
+       required this.refreshToken,
+     });
+
+     final String email;
+     final String accessToken;
+     final String refreshToken;
+   }
+   ```
+2. **Kontrak Interface Repositori (`lib/features/auth/domain/repositories/auth_repository.dart`):**
+   ```dart
+   import '../../../../core/failures.dart';
+   import '../entities/user_session.dart';
+
+   abstract class AuthRepository {
+     Future<({UserSession? session, Failure? failure})> login({
+       required String email,
+       required String password,
+     });
+
+     Future<({String? renewedToken, Failure? failure})> refreshToken(
+       String refreshToken,
+     );
+   }
+   ```
+3. **Use Case Bisnis (`lib/features/auth/domain/usecases/login_usecase.dart`):**
+   Use case mengenkapsulasi validasi bisnis otentikasi (email wajib mengandung `@` dan kata sandi minimal 6 karakter) sebelum memanggil repositori:
+   ```dart
+   class LoginUseCase {
+     const LoginUseCase(this._repository);
+     final AuthRepository _repository;
+
+     Future<({UserSession? session, Failure? failure})> call({
+       required String email,
+       required String password,
+     }) {
+       if (!email.contains('@')) {
+         return Future.value((
+           session: null,
+           failure: const ValidationFailure('Format email tidak valid (harus mengandung @)'),
+         ));
+       }
+       if (password.length < 6) {
+         return Future.value((
+           session: null,
+           failure: const ValidationFailure('Kata sandi minimal 6 karakter'),
+         ));
+       }
+       return _repository.login(email: email, password: password);
+     }
+   }
+   ```
+
+### b. Data Layer Fitur `auth` (Model DTO & Implementasi)
+1. **Model Data (`lib/features/auth/data/models/user_session_model.dart`):**
+   Mengimplementasikan konversi data transfer `fromMap`, `toMap`, dan `toEntity`.
+2. **Implementasi Repositori (`lib/features/auth/data/repositories/auth_repository_impl.dart`):**
+   Mengimplementasikan `AuthRepository` dari domain layer dan membungkus error menjadi `AuthFailure`.
+
+### c. Presentation Layer Fitur `auth` (Dependency Injection)
+- **Wiring Provider (`lib/features/auth/presentation/providers/auth_providers.dart`):**
+  ```dart
+  final authDomainRepositoryProvider = Provider<AuthRepository>((ref) {
+    return AuthRepositoryImpl();
+  });
+
+  final loginUseCaseProvider = Provider<LoginUseCase>((ref) {
+    return LoginUseCase(ref.watch(authDomainRepositoryProvider));
+  });
+  ```
+
+---
+
+## 2. Ekstraksi Fungsi Murni ke `lib/core/format.dart`
+
+Seluruh logika manipulasi string rute dan formatting waktu diekstrak dari widget ke fungsi murni Dart pada `lib/core/format.dart`:
+
+```dart
+class AppFormatters {
+  static String parseRoute(Map<String, dynamic> data) {
+    final route = data['route']?.toString().trim() ?? '';
+    if (route.isEmpty) return '/';
+    return route.startsWith('/') ? route : '/$route';
+  }
+
+  static String extractId(Map<String, dynamic> data) {
+    if (data.containsKey('id') && data['id'] != null) {
+      return data['id'].toString();
+    }
+    final route = parseRoute(data);
+    final segments = route.split('/').where((s) => s.isNotEmpty).toList();
+    return segments.isNotEmpty ? segments.last : '';
+  }
+
+  static String formatRelativeTime(DateTime dateTime, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final diff = current.difference(dateTime);
+    if (diff.inSeconds < 60) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
+    if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+    if (diff.inDays == 1) return 'Kemarin';
+    if (diff.inDays < 7) return '${diff.inDays} hari lalu';
+    return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year}';
+  }
+}
+```
+
+> Berkas `lib/routes.dart` kini mendelegasikan fungsi `routeFromMessage` secara langsung ke `AppFormatters.parseRoute(data)`.
+
+---
+
+## 3. Konversi Exception Mentah Menjadi Objek `Failure`
+
+Agar layer UI presentation tidak pernah menerima exception runtime mentah yang membingungkan pengguna, seluruh error jaringan dan validasi dipetakan ke hierarki `Failure` di `lib/core/failures.dart`:
+
+```dart
+sealed class Failure {
+  const Failure(this.message);
+  final String message;
+}
+
+class LocalFailure extends Failure { const LocalFailure(super.message); }
+class NetworkFailure extends Failure { const NetworkFailure(super.message); }
+class ServerFailure extends Failure { const ServerFailure(super.message); }
+class AuthFailure extends Failure { const AuthFailure(super.message); }
+class ValidationFailure extends Failure { const ValidationFailure(super.message); }
+```
+
+Dengan pola ini, UI hanya perlu mengakses properti `failure.message` untuk ditampilkan ke `SnackBar` atau `ErrorView`.
+
+---
+
+## 4. Pengujian Otomatis Suite Lengkap (Testing)
+
+Proyek memiliki 5 berkas pengujian otomatis yang mencakup seluruh layer tanpa ketergantungan pada emulator, database SQLite native, atau koneksi Firebase sungguhan:
+
+1. **`test/auth_push_test.dart`:** Pengujian routing deep link FCM, refresh token otomatis Dio saat HTTP 401, dan penanganan sesi kedaluwarsa.
+2. **`test/core/format_test.dart`:** Pengujian fungsi murni normalisasi route slash, ekstraksi ID, dan format waktu relatif.
+3. **`test/features/announcements/announcement_domain_test.dart`:** Pengujian entity, model serialisasi DTO, dan implementasi repository pengumuman.
+4. **`test/features/announcements/get_announcements_test.dart`:** Pengujian use case `GetAnnouncements` dengan `FakeAnnouncementRepository` (sukses dan simulasi kegagalan).
+5. **`test/features/auth/login_usecase_test.dart`:** Pengujian use case `LoginUseCase` dengan `FakeAuthDomainRepository` untuk skenario validasi email, validasi password, login sukses, dan login gagal.
+
+### Eksekusi `flutter test`:
+```powershell
+flutter test
+```
+**Hasil Output:**
+```text
+00:00 +0: loading test/auth_push_test.dart
+00:00 +1: routeFromMessage parses announcement payloads safely
+00:00 +2: AppFormatters.parseRoute normalizes missing leading slash
+00:00 +3: 401 refreshes once and retries the request with the new access token
+00:00 +12: dead refresh token clears session and invokes logout callback
+00:00 +13: Announcement Entity & Model Entity preserves properties
+00:00 +14: Announcement Entity & Model Model converts toMap and fromMap correctly
+00:00 +15: AnnouncementRepositoryImpl & UseCase fetchAnnouncements returns non-empty list without failure
+00:00 +16: AnnouncementRepositoryImpl & UseCase getAnnouncementById returns matching announcement
+00:00 +17: AnnouncementRepositoryImpl & UseCase getAnnouncementById returns failure when id not found
+00:00 +18: AnnouncementRepositoryImpl & UseCase GetAnnouncements usecase calls repository.fetchAnnouncements
+00:00 +19: GetAnnouncements Use Case GetAnnouncements meneruskan daftar pengumuman dari repository palsu
+00:00 +20: GetAnnouncements Use Case GetAnnouncements meneruskan failure tanpa melempar exception mentah
+00:01 +21: LoginUseCase returns ValidationFailure when email does not contain @
+00:01 +22: LoginUseCase returns ValidationFailure when password is shorter than 6 chars
+00:01 +23: LoginUseCase returns UserSession on valid credentials
+00:01 +24: LoginUseCase returns AuthFailure when repository fails
+00:01 +25: All tests passed!
+```
+**Seluruh 25 pengujian dari 5 test suite berhasil lolos 100% (PASS)** ✅.
+
+---
+
+## 5. Error Umum dan Solusinya
+
+Berikut adalah matriks kesalahan umum saat mengadopsi Clean Architecture di Flutter dan solusi praktisnya:
+
+| Gejala Error | Penyebab Utama | Solusi Praktis |
+| :--- | :--- | :--- |
+| **Circular Import / File saling mengimpor** | Presentation diimpor oleh layer domain/data, atau fitur saling mengimpor widget internal fitur lain. | Patuhi arah panah: Presentation $\rightarrow$ Domain $\leftarrow$ Data. Komunikasi antar fitur wajib melalui rute (*GoRouter deep link*), bukan mengimpor widget secara langsung. |
+| **`The argument type 'XModel' can't be assigned to 'XEntity'`** | Repository implementation mengembalikan tipe `Model`, sedangkan kontrak interface meminta `Entity`. | Selalu lakukan mapping eksplisit `.toEntity()` di perbatasan data $\rightarrow$ domain sebelum mengembalikan hasil. |
+| **`ref.watch` error di luar widget/provider** | Menuliskan pemanggilan wiring DI di fungsi biasa atau di dalam constructor kelas biasa. | Tempatkan seluruh wiring DI hanya di dalam definisi `Provider` / `Notifier` Riverpod, atau di dalam `ConsumerWidget`. |
+| **Unit test membutuhkan database / Firebase asli** | Use case diuji dengan menginstansiasi repositori konkret (`XRepositoryImpl`) yang memanggil SDK native. | Selalu gunakan *Fake Repository* / *Mock* yang mengimplementasikan interface repository domain untuk pengujian use case. |
+| **Refactoring merusak fitur yang sudah jalan** | Melakukan refactoring secara agresif tanpa snapshot commit dan tanpa pengujian regresi per fitur. | Ambil snapshot commit sebelum refactor, jalankan unit test secara berkelanjutan, dan verifikasi bahwa UI serta deep link tetap berjalan identik. |
+
+---
+
+## 6. Checklist Verifikasi Mandiri Akhir
+
+- [x] **Tiga grep sterilitas (presentation & domain) bernilai 0 temuan.**
+- [x] **Interface berada di domain, implementasi berada di data, dan mapping hanya di model.**
+- [x] **Widget tidak menginstansiasi repositori secara manual (seluruhnya melalui provider Riverpod).**
+- [x] **Aplikasi berjalan identik sebelum dan sesudah refactoring.**
+- [x] **`flutter analyze` bersih (No issues found) dan seluruh 25 unit test lulus.**
+
+
 
 

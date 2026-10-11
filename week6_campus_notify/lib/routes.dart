@@ -1,3 +1,5 @@
+import 'core/format.dart';
+
 class AppRoutes {
   static const login = '/login';
   static const home = '/home';
@@ -8,8 +10,6 @@ class AppRoutes {
 }
 
 /// Fungsi murni untuk mengekstrak dan memformat route dari payload data notifikasi
-String routeFromMessage(Map<String, dynamic> data) {
-  final route = data['route']?.toString() ?? AppRoutes.root;
-  if (route.isEmpty) return AppRoutes.root;
-  return route.startsWith('/') ? route : '/$route';
-}
+String routeFromMessage(Map<String, dynamic> data) =>
+    AppFormatters.parseRoute(data);
+
