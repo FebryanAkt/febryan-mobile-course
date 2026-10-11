@@ -2,14 +2,9 @@
 
 > **Proyek yang Diaudit:** `week6_campus_notify`  
 
-
 ---
 
-## 📌 Ringkasan Praktikum 1
-
-Tujuan dari Praktikum 1 adalah melakukan audit menyeluruh terhadap arsitektur kode proyek Minggu 6 (`campus_notify`), mengidentifikasi pelanggaran prinsip **SOLID** dan aturan dependensi (**Separation of Concerns**), serta merancang struktur arsitektur target berbasis **Feature-First Clean Architecture** sebelum refactoring dilakukan pada praktikum berikutnya.
-
----
+##  Praktikum 1
 
 ## 1. Pemetaan File ke Layer Saat Ini
 
@@ -36,7 +31,7 @@ Berikut adalah tabel audit pemetaan seluruh berkas proyek `campus_notify` ke lay
 
 Berdasarkan pencarian menggunakan perintah grep/pattern matching pada folder `lib/pages` dan `lib/providers`:
 
-### 🔴 Pelanggaran 1: Widget yang Menyentuh Jaringan / Database / Service Eksternal Langsung
+### Pelanggaran 1: Widget yang Menyentuh Jaringan / Database / Service Eksternal Langsung
 **Perintah Pencarian:**
 ```powershell
 Select-String -Path "lib/pages/*.dart" -Pattern "Dio\(|http\.|openDatabase|SharedPreferences\.getInstance|FlutterSecureStorage|FirebaseMessaging\.instance"
@@ -60,7 +55,7 @@ Widget UI secara langsung mengakses SDK Firebase dan method statis I/O eksternal
 
 ---
 
-### 🟡 Pelanggaran 2: Logika Bisnis di dalam `build()` / Presentation
+### Pelanggaran 2: Logika Bisnis di dalam `build()` / Presentation
 **Perintah Pencarian:**
 ```powershell
 Select-String -Path "lib/pages/*.dart" -Pattern "DateFormat|jsonDecode|\.toIso8601String|substring"
@@ -81,7 +76,7 @@ Logika manipulasi data (masking string token) dan definisi entitas/daftar pengum
 
 ---
 
-### 🔵 Pelanggaran 3: Instansiasi Manual (Dependency Injection Bocor)
+### Pelanggaran 3: Instansiasi Manual (Dependency Injection Bocor)
 **Perintah Pencarian:**
 ```powershell
 Select-String -Path "lib/**/*.dart" -Pattern "Repository\(|Dio\(BaseOptions|FlutterSecureStorage\("
@@ -103,105 +98,13 @@ Provider menginstansiasi implementasi konkret `AuthRepository` secara langsung a
 
 ---
 
-## 3. Rancangan Struktur Target (Feature-First Clean Architecture)
-
-Sesuai panduan Codelab Minggu 7, arsitektur target yang akan diterapkan pada refactoring fitur `announcements` dan `auth` adalah sebagai berikut:
-
-```text
-lib/
-├── core/
-│   ├── errors/
-│   │   └── failures.dart                      # Kelas Failure domain murni Dart
-│   └── network/
-│       └── api_client.dart                    # Dio network client
-│
-├── features/
-│   ├── announcements/
-│   │   ├── domain/                            # Layer Domain (Murni Dart, Bebas Flutter)
-│   │   │   ├── entities/
-│   │   │   │   └── announcement.dart          # Entity murni Announcement
-│   │   │   ├── repositories/
-│   │   │   │   └── announcement_repository.dart # Abstract Interface kontrak repositori
-│   │   │   └── usecases/
-│   │   │       ├── get_announcements.dart     # Use case mengambil riwayat pengumuman
-│   │   │       └── manage_topic.dart          # Use case subscribe/unsubscribe topik
-│   │   │
-│   │   ├── data/                              # Layer Data (Implementasi & Sumber Data Luar)
-│   │   │   ├── models/
-│   │   │   │   └── announcement_model.dart    # Model DTO pengumuman (fromJson/toJson)
-│   │   │   ├── datasources/
-│   │   │   │   └── announcement_remote_data_source.dart # Sumber data API / FCM
-│   │   │   └── repositories/
-│   │   │       └── announcement_repository_impl.dart    # Implementasi konkret repositori
-│   │   │
-│   │   └── presentation/                      # Layer Presentation (UI & State)
-│   │       ├── providers/
-│   │       │   └── announcement_providers.dart # Riverpod Notifier & DI binding
-│   │       └── pages/
-│   │           ├── home_page.dart             # UI Beranda bebas akses langsung ke FCM/Dio
-│   │           └── announcement_page.dart     # UI Detail pengumuman
-│   │
-│   └── auth/
-│       ├── domain/
-│       │   ├── entities/
-│       │   │   └── user_session.dart          # Entitas bisnis sesi autentikasi
-│       │   ├── repositories/
-│       │   │   └── auth_repository.dart       # Interface kontrak autentikasi
-│       │   └── usecases/
-│       │       └── login_usecase.dart         # Use case login bisnis
-│       ├── data/
-│       │   ├── models/
-│       │   │   └── user_session_model.dart    # Model sesi JWT
-│       │   └── repositories/
-│       │       └── auth_repository_impl.dart  # Implementasi repositori auth & secure storage
-│       └── presentation/
-│           ├── providers/
-│           │   └── auth_providers.dart        # Notifier auth & DI
-│           └── pages/
-│               └── login_page.dart            # UI Halaman login
-│
-├── routes.dart                                # Konfigurasi GoRouter & rute aplikasi
-└── main.dart                                  # Entry point & Composition Root
-```
-
----
-
-## 4. Rangkuman Target Item Refactor untuk Praktikum Selanjutnya
-
-Berdasarkan audit di atas, target refactor yang akan dilakukan pada praktikum berikutnya adalah:
-1. **Membuat layer Domain (Praktikum 2):**
-   - Mendefinisikan entity murni (`Announcement`) tanpa dependency eksternal.
-   - Membuat kontrak abstract repository di layer domain.
-   - Membuat *Use Case* untuk operasi bisnis (`GetAnnouncements`).
-2. **Membuat layer Data (Praktikum 2):**
-   - Mengimplementasikan repository interface di `data/repositories/`.
-   - Mengonversi data eksternal ke domain entity menggunakan *Model*.
-3. **Membersihkan layer Presentation (Praktikum 3):**
-   - Menghubungkan widget hanya ke Riverpod Notifier yang memanggil Use Case.
-   - Memastikan hasil audit grep di folder `lib/pages` dan `lib/widgets` menghasilkan **0 temuan pelanggaran**.
-
----
-
-# Praktikum 2: Domain dan Data per Fitur (Minggu 7 — Clean Architecture)
-
-> **Fitur yang Direfactor:** `announcements`  
-> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 3: Praktikum 2)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#3)
-
----
-
-## 📌 Ringkasan Praktikum 2
-
-Praktikum 2 berfokus pada implementasi dua lapisan terdalam dari Clean Architecture untuk fitur `announcements`:
-1. **Layer Domain:** Merupakan lapisan paling dalam dan murni (*pure Dart*). Bebas dari impor Flutter, Dio, Firebase, atau SQLite. Berisi entitas bisnis murni (`Announcement`), failure hierarchy (`Failure`), kontrak abstraksi repositori (`AnnouncementRepository`), dan use case bisnis tunggal (`GetAnnouncements`).
-2. **Layer Data:** Mengimplementasikan kontrak yang didefinisikan oleh domain. Berisi representasi DTO model data (`AnnouncementModel`) dengan fungsi mapping (`fromMap`, `toMap`, `toEntity`), serta implementasi konkret repositori (`AnnouncementRepositoryImpl`).
-
----
+## 📌  Praktikum 2
 
 ## 1. Entity Murni (Domain Layer)
 
 Entity merepresentasikan objek bisnis murni tanpa logika mapping database/JSON dan tanpa dependensi framework UI Flutter.
 
-📁 **Berkas:** `lib/features/announcements/domain/entities/announcement.dart`
+**Berkas:** `lib/features/announcements/domain/entities/announcement.dart`
 ```dart
 class Announcement {
   const Announcement({
@@ -225,7 +128,7 @@ class Announcement {
 ## 2. Failure dan Kontrak Repository (Domain Layer)
 
 ### a. Hierarki Failure Murni Dart
-📁 **Berkas:** `lib/core/failures.dart`
+ **Berkas:** `lib/core/failures.dart`
 ```dart
 sealed class Failure {
   const Failure(this.message);
@@ -248,7 +151,7 @@ class ServerFailure extends Failure {
 ### b. Kontrak Interface Repository
 Mendefinisikan *interface* murni yang dibutuhkan oleh domain. Menggunakan fitur **Dart Record** `({List<Announcement> announcements, Failure? failure})` untuk membedakan hasil sukses dan gagal secara tipe data tanpa membocorkan exception mentah ke presentation layer.
 
-📁 **Berkas:** `lib/features/announcements/domain/repositories/announcement_repository.dart`
+**Berkas:** `lib/features/announcements/domain/repositories/announcement_repository.dart`
 ```dart
 import '../../../../core/failures.dart';
 import '../entities/announcement.dart';
@@ -269,7 +172,7 @@ abstract class AnnouncementRepository {
 ### a. Model Data & Mapping
 Model bertindak sebagai Data Transfer Object (DTO) yang bertanggung jawab memetakan format data eksternal (JSON/Map) ke entitas domain murni.
 
-📁 **Berkas:** `lib/features/announcements/data/models/announcement_model.dart`
+**Berkas:** `lib/features/announcements/data/models/announcement_model.dart`
 ```dart
 import '../../domain/entities/announcement.dart';
 
@@ -313,7 +216,7 @@ class AnnouncementModel extends Announcement {
 ### b. Implementasi Repositori
 Mengimplementasikan `AnnouncementRepository` yang didefinisikan oleh domain. Menangani eksepsi dan mengonversinya menjadi objek `Failure`.
 
-📁 **Berkas:** `lib/features/announcements/data/repositories/announcement_repository_impl.dart`
+**Berkas:** `lib/features/announcements/data/repositories/announcement_repository_impl.dart`
 ```dart
 import '../../../../core/failures.dart';
 import '../../domain/entities/announcement.dart';
@@ -393,7 +296,7 @@ class AnnouncementRepositoryImpl implements AnnouncementRepository {
 
 Use case mewakili satu aksi bisnis spesifik dari pengguna. `GetAnnouncements` hanya bergantung pada abstraksi interface `AnnouncementRepository`.
 
-📁 **Berkas:** `lib/features/announcements/domain/usecases/get_announcements.dart`
+**Berkas:** `lib/features/announcements/domain/usecases/get_announcements.dart`
 ```dart
 import '../../../../core/failures.dart';
 import '../entities/announcement.dart';
@@ -455,25 +358,11 @@ Seluruh **9 skenario pengujian unit berhasil lolos 100% (PASS)** ✅.
 
 # Praktikum 3: Presentation, DI, dan Verifikasi (Minggu 7 — Clean Architecture)
 
-> **Fitur yang Direfactor:** `announcements`  
-> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 4: Praktikum 3)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#4)
-
----
-
-## 📌 Ringkasan Praktikum 3
-
-Praktikum 3 menyelesaikan tahapan refactoring Clean Architecture dengan:
-1. **Dependency Injection (Wiring) dengan Riverpod:** Menghubungkan data layer (`AnnouncementRepositoryImpl`) dan domain layer (`GetAnnouncements`) ke presentation provider tanpa membuat widget bergantung langsung pada implementasi konkret.
-2. **Refactoring UI Widget:** Memperbarui `HomePage` agar hanya membaca asynchronous state dari `announcementsProvider` menggunakan pola `AsyncValue.when()`. Model lokal tiruan `_NotifItem` dan hardcoded list `_history` berhasil dihapus sepenuhnya dari presentation layer.
-3. **Verifikasi Tiga Aturan Dependensi (Dependency Rule Check):** Membuktikan bahwa presentation steril dari data mentah, domain steril dari library pihak ketiga, analisa statis bebas issue, dan seluruh unit test lulus 100%.
-
----
-
 ## 1. Dependency Injection dengan Riverpod
 
 Berkas `announcement_providers.dart` menjadi satu-satunya tempat perakitan (*wiring*) dependensi antara Data, Domain, dan Presentation layer:
 
-📁 **Berkas:** `lib/features/announcements/presentation/providers/announcement_providers.dart`
+**Berkas:** `lib/features/announcements/presentation/providers/announcement_providers.dart`
 ```dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/announcement_repository_impl.dart';
@@ -507,7 +396,7 @@ final announcementsProvider = FutureProvider<List<Announcement>>((ref) async {
 
 Halaman `HomePage` dibersihkan dari model data lokal tiruan `_NotifItem` dan hardcoded list `_history`. Sekarang widget hanya mendengarkan state dari Riverpod melalui `announcementsProvider`:
 
-📁 **Berkas:** `lib/pages/home_page.dart` (potongan kode implementasi):
+ **Berkas:** `lib/pages/home_page.dart` (potongan kode implementasi):
 ```dart
 @override
 Widget build(BuildContext context) {
@@ -579,7 +468,7 @@ Widget build(BuildContext context) {
 
 Sesuai kriteria penyelesaian Praktikum 3 codelab, tiga pemeriksaan berikut wajib dipenuhi:
 
-### ✅ Pemeriksaan 1: Presentation Steril dari Data Mentah (Target: 0 Temuan)
+### Pemeriksaan 1: Presentation Steril dari Data Mentah (Target: 0 Temuan)
 Memastikan tidak ada instansiasi klien HTTP mentah, SQLite database, secure storage, shared preferences, maupun parsing JSON manual di dalam presentation layer:
 ```powershell
 Select-String -Path "lib/pages/*.dart", "lib/features/**/presentation/**/*.dart" -Pattern "Dio\(|openDatabase|getDatabasesPath|FlutterSecureStorage|SharedPreferences\.getInstance|jsonDecode"
@@ -588,7 +477,7 @@ Select-String -Path "lib/pages/*.dart", "lib/features/**/presentation/**/*.dart"
 
 ---
 
-### ✅ Pemeriksaan 2: Domain Steril dari Framework & Package Luar (Target: 0 Temuan)
+### Pemeriksaan 2: Domain Steril dari Framework & Package Luar (Target: 0 Temuan)
 Memastikan seluruh kode pada `domain` dan `core` merupakan *pure Dart* tanpa impor Flutter, Dio, SQLite, atau Firebase:
 ```powershell
 Select-String -Path "lib/core/*.dart", "lib/features/**/domain/**/*.dart" -Pattern "import 'package:flutter|import 'package:dio|import 'package:sqflite|import 'package:firebase"
@@ -597,7 +486,7 @@ Select-String -Path "lib/core/*.dart", "lib/features/**/domain/**/*.dart" -Patte
 
 ---
 
-### ✅ Pemeriksaan 3: Static Analysis & Unit Testing Bebas Masalah
+### Pemeriksaan 3: Static Analysis & Unit Testing Bebas Masalah
 1. **Analisa Statis:**
    ```powershell
    flutter analyze
@@ -632,7 +521,7 @@ Select-String -Path "lib/core/*.dart", "lib/features/**/domain/**/*.dart" -Patte
 
 ---
 
-## 🎯 Definisi Selesai (Definition of Done)
+## Definisi Selesai (Definition of Done)
 
 Refactoring Clean Architecture pada fitur `announcements` dinyatakan **SELESAI**:
 - ✅ Tiga pemeriksaan sterilitas menghasilkan **0 temuan** pelanggaran.
@@ -643,11 +532,6 @@ Refactoring Clean Architecture pada fitur `announcements` dinyatakan **SELESAI**
 ---
 
 # AI Challenge (Minggu 7 — Clean Architecture)
-
-> **Konteks:** Evaluasi Reorganisasi Clean Architecture, Penilaian Over-Engineering, dan Verifikasi Checklist  
-> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 5: AI Challenge)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#5)
-
----
 
 ## 1. Prompt Asli AI Challenge
 
@@ -717,10 +601,6 @@ AI menyarankan penggunaan Riverpod untuk menyuntikkan repository ke dalam use ca
 
 # Refactoring, Testing, dan Error Umum (Minggu 7 — Clean Architecture)
 
-> **Konteks:** Refactoring Fitur Kedua (`auth`), Ekstraksi Fungsi Murni, Penanganan Failure, Unit Testing, dan Mitigasi Error  
-> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 6: Refactoring, testing, dan error umum)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#6)
-
----
 
 ## 1. Refactoring Challenge: Menerapkan Clean Architecture pada Fitur Kedua (`auth`)
 
@@ -917,26 +797,10 @@ Berikut adalah matriks kesalahan umum saat mengadopsi Clean Architecture di Flut
 
 ---
 
-## 6. Checklist Verifikasi Mandiri Akhir
-
-- [x] **Tiga grep sterilitas (presentation & domain) bernilai 0 temuan.**
-- [x] **Interface berada di domain, implementasi berada di data, dan mapping hanya di model.**
-- [x] **Widget tidak menginstansiasi repositori secara manual (seluruhnya melalui provider Riverpod).**
-- [x] **Aplikasi berjalan identik sebelum dan sesudah refactoring.**
-- [x] **`flutter analyze` bersih (No issues found) dan seluruh 25 unit test lulus.**
-
----
-
 # Tugas, Refleksi, dan Referensi (Minggu 7 — Clean Architecture)
-
-> **Konteks:** Penyelesaian Mini Project / Industry Challenge, Refleksi Teknis Arsitektur, dan Referensi Pendukung  
-> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 7: Tugas, refleksi, dan referensi)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#7)
-
----
 
 ## 1. Rangkuman Penyelesaian Mini Project (Industry Challenge)
 
-Pada tugas ini, proyek **`week6_campus_notify`** berhasil direfactor secara komprehensif menerapkan arsitektur **Feature-First Clean Architecture** tanpa merusak fungsionalitas FCM push notification, autentikasi, maupun deep linking yang telah dibangun:
 
 1. **Pemisahan Layer Penuh pada Dua Fitur (`announcements` & `auth`):**
    - **`domain/` (Murni Dart):** Berisi entitas bisnis murni (`Announcement`, `UserSession`), hierarki kegagalan (`Failure`), abstract interface repository (`AnnouncementRepository`, `AuthRepository`), dan use cases (`GetAnnouncements`, `LoginUseCase`). Bebas 100% dari dependensi framework Flutter, Dio, SQLite, maupun Firebase.
@@ -1003,21 +867,3 @@ Dengan menaruh interface di **Domain**, arah dependensi terbalik (*inverted*): *
 2. **Penolakan Anotasi `@immutable` Flutter di Layer Domain:** AI menyarankan mengimpor `package:flutter/foundation.dart` pada entitas domain. Ditolak dan diganti dengan constructor `const` murni Dart agar layer domain 100% steril dari SDK Flutter dan dapat dieksekusi di lingkungan Dart murni.
 3. **Penolakan Package Pihak Ketiga `dartz` / `fpdart`:** AI mengusulkan penggunaan tipe `Either<Failure, T>` dari package luar. Ditolak untuk menghindari *dependency bloat* dan disederhanakan menggunakan fitur native bahasa **Dart Record** `({T data, Failure? failure})`.
 4. **Penolakan Perombakan Struktur Navigasi Halaman Eksisting:** AI mengusulkan memindahkan seluruh file halaman ke subfolder fitur dan memecah GoRouter secara radikal. Ditolak demi menjaga kestabilan route guard dan penanganan deep link notifikasi push FCM yang sudah berjalan baik di Minggu 6.
-
----
-
-## 3. Referensi Pendukung
-
-- **Codelab Minggu 7:** [Polinema Mobile Codelab #07 - Clean Architecture](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html)
-- **Slide Perkuliahan:** Slide Week 7 Pemrograman Mobile: Clean Architecture & SOLID Principles (JTI Polinema)
-- **Dokumentasi Resmi Flutter Architecture:** [Flutter App Architecture Guide](https://docs.flutter.dev)
-- **Buku Arsitektur:** Robert C. Martin (Uncle Bob), *Clean Architecture: A Craftsman's Guide to Software Structure and Design*, Prentice Hall.
-- **State Management & DI:** [Flutter Riverpod Documentation](https://riverpod.dev)
-- **Fitur Bahasa Dart:** [Dart Records & Patterns Guide](https://dart.dev/language/records)
-- **Routing & Deep Linking:** [GoRouter Package Documentation](https://pub.dev/packages/go_router)
-- **Standar Keamanan Mobile:** [OWASP Mobile Top 10 Security Risks](https://owasp.org/www-project-mobile-top-10/)
-
-
-
-
-
