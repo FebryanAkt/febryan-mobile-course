@@ -7,18 +7,17 @@ final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(),
 );
 
-final tokenStoreProvider = Provider<TokenStore>(
-  (ref) => TokenStore(),
-);
+final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
 
-final authStateProvider =
-    AsyncNotifierProvider<AuthNotifier, bool>(AuthNotifier.new);
+final authStateProvider = AsyncNotifierProvider<AuthNotifier, bool>(
+  AuthNotifier.new,
+);
 
 class AuthNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
     final token = await ref.watch(tokenStoreProvider).readAccess();
-    return token != null;
+    return token != null && token.trim().isNotEmpty;
   }
 
   Future<void> login(String email, String password) async {

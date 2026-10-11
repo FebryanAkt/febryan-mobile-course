@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -61,10 +62,7 @@ class FcmService {
     try {
       await dio.post<void>(
         '/devices',
-        data: {
-          'fcm_token': token,
-          'platform': platform,
-        },
+        data: {'fcm_token': token, 'platform': platform},
       );
       debugPrint('[FcmService] Token berhasil dikirim ke backend ($platform)');
     } on DioException catch (e) {

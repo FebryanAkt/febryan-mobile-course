@@ -1,49 +1,79 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../providers/auth_provider.dart';
 import 'auth_repository.dart';
 import 'token_store.dart';
 
-/// Buat Dio client dengan auto-refresh JWT.
-/// Base URL tidak di-hardcode — diambil dari konstanta terpisah
-/// sehingga mudah diganti per lingkungan (dev / staging / prod).
-Dio buildApiClient(TokenStore store, AuthRepository auth) {
+/// Creates a Dio client that retries an unauthorized request once after refresh.
+Dio buildApiClient(
+  SessionTokenStore store,
+  AuthRepository auth, {
+  Future<void> Function()? onSessionExpired,
+  HttpClientAdapter? adapter,
+}) {
   final dio = Dio(
     BaseOptions(
-      // TODO: ganti dengan env-based config atau dart-define saat produksi
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
         defaultValue: 'https://example-campus-api.test',
       ),
     ),
   );
+  if (adapter != null) dio.httpClientAdapter = adapter;
 
+  const retryKey = 'retried_after_refresh';
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
         final access = await store.readAccess();
-        if (access != null) {
+        if (access != null && access.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $access';
         }
         handler.next(options);
       },
-      onError: (e, handler) async {
-        if (e.response?.statusCode == 401) {
-          final refresh = await store.readRefresh();
-          if (refresh == null) return handler.next(e);
-          try {
-            final renewed = await auth.refresh(refresh);
-            await store.save(access: renewed, refresh: refresh);
-            final retry = await dio.fetch<dynamic>(
-              e.requestOptions..headers['Authorization'] = 'Bearer $renewed',
-            );
-            return handler.resolve(retry);
-          } catch (_) {
-            // Refresh gagal → paksa login ulang
-            await store.clear();
-          }
+      onError: (error, handler) async {
+        if (error.response?.statusCode != 401) {
+          return handler.next(error);
         }
-        handler.next(e);
+
+        // A second 401 means the one allowed retry failed; end the session.
+        if (error.requestOptions.extra[retryKey] == true) {
+          await _expireSession(store, onSessionExpired);
+          return handler.next(error);
+        }
+
+        final refresh = await store.readRefresh();
+        if (refresh == null || refresh.trim().isEmpty) {
+          await _expireSession(store, onSessionExpired);
+          return handler.next(error);
+        }
+
+        late final String renewedAccess;
+        try {
+          renewedAccess = await auth.refresh(refresh);
+        } catch (_) {
+          await _expireSession(store, onSessionExpired);
+          return handler.next(error);
+        }
+
+        await store.save(access: renewedAccess, refresh: refresh);
+        final extra = Map<String, dynamic>.from(error.requestOptions.extra)
+          ..[retryKey] = true;
+        final retryRequest = error.requestOptions.copyWith(
+          headers: {
+            ...error.requestOptions.headers,
+            'Authorization': 'Bearer $renewedAccess',
+          },
+          extra: extra,
+        );
+        try {
+          final response = await dio.fetch<dynamic>(retryRequest);
+          return handler.resolve(response);
+        } on DioException catch (retryError) {
+          // A retry 401 has already expired the session in its own handler.
+          return handler.next(retryError);
+        }
       },
     ),
   );
@@ -51,9 +81,20 @@ Dio buildApiClient(TokenStore store, AuthRepository auth) {
   return dio;
 }
 
-/// Riverpod provider untuk Dio client yang sudah dikonfigurasi.
+Future<void> _expireSession(
+  SessionTokenStore store,
+  Future<void> Function()? onSessionExpired,
+) async {
+  await store.clear();
+  await onSessionExpired?.call();
+}
+
 final apiClientProvider = Provider<Dio>((ref) {
   final store = ref.watch(tokenStoreProvider);
   final auth = ref.watch(authRepositoryProvider);
-  return buildApiClient(store, auth);
+  return buildApiClient(
+    store,
+    auth,
+    onSessionExpired: () => ref.read(authStateProvider.notifier).logout(),
+  );
 });
