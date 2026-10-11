@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../features/announcements/presentation/providers/announcement_providers.dart';
 import '../providers/auth_provider.dart';
 import '../routes.dart';
 import '../services/fcm_service.dart';
@@ -18,27 +19,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   String _tokenDisplay = 'Mengambil token...';
   bool _subscribed = true; // Diasumsikan subscribe saat login
 
-  // Simulasi riwayat notifikasi (dalam produksi: fetch dari backend / local DB)
-  final List<_NotifItem> _history = [
-    _NotifItem(
-      title: 'Jadwal UTS Dipercepat',
-      body: 'UTS Pemrograman Mobile dimajukan ke 18 Oktober 2026.',
-      route: AppRoutes.announcementDetail('1'),
-      time: '08:00',
-    ),
-    _NotifItem(
-      title: 'Pengumuman Beasiswa',
-      body: 'Pendaftaran beasiswa prestasi dibuka hingga 30 Oktober 2026.',
-      route: AppRoutes.announcementDetail('2'),
-      time: 'Kemarin',
-    ),
-    _NotifItem(
-      title: 'Libur Nasional',
-      body: 'Kampus libur pada 28 Oktober 2026 (Hari Sumpah Pemuda).',
-      route: AppRoutes.announcementDetail('3'),
-      time: '2 hari lalu',
-    ),
-  ];
 
   @override
   void initState() {
@@ -98,6 +78,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final announcementsAsync = ref.watch(announcementsProvider);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -222,25 +203,47 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          ..._history.map(
-            (item) => Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.deepPurple,
-                  child: Icon(Icons.notifications, color: Colors.white),
-                ),
-                title: Text(item.title),
-                subtitle: Text(item.body, maxLines: 2, overflow: TextOverflow.ellipsis),
-                trailing: Text(
-                  item.time,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Colors.grey),
-                ),
-                onTap: () => context.go(item.route),
+          announcementsAsync.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
               ),
+            ),
+            error: (err, _) => Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Gagal memuat pengumuman: $err'),
+              ),
+            ),
+            data: (announcements) => Column(
+              children: announcements
+                  .map(
+                    (item) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.deepPurple,
+                          child: Icon(Icons.notifications, color: Colors.white),
+                        ),
+                        title: Text(item.title),
+                        subtitle: Text(
+                          item.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Text(
+                          item.time,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.grey),
+                        ),
+                        onTap: () => context.go(item.route),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
         ],
@@ -249,16 +252,3 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-class _NotifItem {
-  final String title;
-  final String body;
-  final String route;
-  final String time;
-
-  const _NotifItem({
-    required this.title,
-    required this.body,
-    required this.route,
-    required this.time,
-  });
-}

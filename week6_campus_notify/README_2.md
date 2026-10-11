@@ -451,3 +451,191 @@ flutter test
 ```
 Seluruh **9 skenario pengujian unit berhasil lolos 100% (PASS)** ✅.
 
+---
+
+# Praktikum 3: Presentation, DI, dan Verifikasi (Minggu 7 — Clean Architecture)
+
+> **Fitur yang Direfactor:** `announcements`  
+> **Referensi Codelab:** [Polinema Mobile Codelab #07 - Clean Architecture (Langkah 4: Praktikum 3)](https://jti-polinema.github.io/flutter-codelab/07-minggu-7-clean-architecture/index.html#4)
+
+---
+
+## 📌 Ringkasan Praktikum 3
+
+Praktikum 3 menyelesaikan tahapan refactoring Clean Architecture dengan:
+1. **Dependency Injection (Wiring) dengan Riverpod:** Menghubungkan data layer (`AnnouncementRepositoryImpl`) dan domain layer (`GetAnnouncements`) ke presentation provider tanpa membuat widget bergantung langsung pada implementasi konkret.
+2. **Refactoring UI Widget:** Memperbarui `HomePage` agar hanya membaca asynchronous state dari `announcementsProvider` menggunakan pola `AsyncValue.when()`. Model lokal tiruan `_NotifItem` dan hardcoded list `_history` berhasil dihapus sepenuhnya dari presentation layer.
+3. **Verifikasi Tiga Aturan Dependensi (Dependency Rule Check):** Membuktikan bahwa presentation steril dari data mentah, domain steril dari library pihak ketiga, analisa statis bebas issue, dan seluruh unit test lulus 100%.
+
+---
+
+## 1. Dependency Injection dengan Riverpod
+
+Berkas `announcement_providers.dart` menjadi satu-satunya tempat perakitan (*wiring*) dependensi antara Data, Domain, dan Presentation layer:
+
+📁 **Berkas:** `lib/features/announcements/presentation/providers/announcement_providers.dart`
+```dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/repositories/announcement_repository_impl.dart';
+import '../../domain/entities/announcement.dart';
+import '../../domain/repositories/announcement_repository.dart';
+import '../../domain/usecases/get_announcements.dart';
+
+// Data layer: repository disuntikkan (memudahkan mocking / replacement saat testing)
+final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
+  return AnnouncementRepositoryImpl();
+});
+
+// Domain layer: use case menerima abstraksi interface, bukan implementasi konkret
+final getAnnouncementsProvider = Provider<GetAnnouncements>((ref) {
+  return GetAnnouncements(ref.watch(announcementRepositoryProvider));
+});
+
+// Presentation layer: state asynchronous untuk dikonsumsi oleh UI widget
+final announcementsProvider = FutureProvider<List<Announcement>>((ref) async {
+  final result = await ref.watch(getAnnouncementsProvider).call();
+  if (result.failure != null) {
+    throw Exception(result.failure!.message);
+  }
+  return result.announcements;
+});
+```
+
+---
+
+## 2. Halaman Hanya Membaca State (UI Presentation)
+
+Halaman `HomePage` dibersihkan dari model data lokal tiruan `_NotifItem` dan hardcoded list `_history`. Sekarang widget hanya mendengarkan state dari Riverpod melalui `announcementsProvider`:
+
+📁 **Berkas:** `lib/pages/home_page.dart` (potongan kode implementasi):
+```dart
+@override
+Widget build(BuildContext context) {
+  final announcementsAsync = ref.watch(announcementsProvider);
+  return Scaffold(
+    ...
+    // Riwayat Pengumuman
+    Text(
+      'Riwayat Pengumuman',
+      style: Theme.of(context)
+          .textTheme
+          .titleMedium
+          ?.copyWith(fontWeight: FontWeight.bold),
+    ),
+    const SizedBox(height: 8),
+    announcementsAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (err, _) => Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Gagal memuat pengumuman: $err'),
+        ),
+      ),
+      data: (announcements) => Column(
+        children: announcements
+            .map(
+              (item) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.deepPurple,
+                    child: Icon(Icons.notifications, color: Colors.white),
+                  ),
+                  title: Text(item.title),
+                  subtitle: Text(
+                    item.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Text(
+                    item.time,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.grey),
+                  ),
+                  onTap: () => context.go(item.route),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    ),
+    ...
+  );
+}
+```
+
+> **Catatan:** Tampilan antarmuka (*UI*) tetap 100% identik dengan hasil implementasi Minggu 6 (judul, waktu, avatar icon, dan route `/pengumuman/1`), namun arsitektur di baliknya kini telah murni mengalir dari Data $\rightarrow$ Domain $\rightarrow$ Presentation.
+
+---
+
+## 3. Tiga Verifikasi Wajib Dependency Rule
+
+Sesuai kriteria penyelesaian Praktikum 3 codelab, tiga pemeriksaan berikut wajib dipenuhi:
+
+### ✅ Pemeriksaan 1: Presentation Steril dari Data Mentah (Target: 0 Temuan)
+Memastikan tidak ada instansiasi klien HTTP mentah, SQLite database, secure storage, shared preferences, maupun parsing JSON manual di dalam presentation layer:
+```powershell
+Select-String -Path "lib/pages/*.dart", "lib/features/**/presentation/**/*.dart" -Pattern "Dio\(|openDatabase|getDatabasesPath|FlutterSecureStorage|SharedPreferences\.getInstance|jsonDecode"
+```
+**Hasil Eksekusi:** **0 Temuan (Lolos 100%)** ✅
+
+---
+
+### ✅ Pemeriksaan 2: Domain Steril dari Framework & Package Luar (Target: 0 Temuan)
+Memastikan seluruh kode pada `domain` dan `core` merupakan *pure Dart* tanpa impor Flutter, Dio, SQLite, atau Firebase:
+```powershell
+Select-String -Path "lib/core/*.dart", "lib/features/**/domain/**/*.dart" -Pattern "import 'package:flutter|import 'package:dio|import 'package:sqflite|import 'package:firebase"
+```
+**Hasil Eksekusi:** **0 Temuan (Lolos 100%)** ✅
+
+---
+
+### ✅ Pemeriksaan 3: Static Analysis & Unit Testing Bebas Masalah
+1. **Analisa Statis:**
+   ```powershell
+   flutter analyze
+   ```
+   **Hasil:**
+   ```text
+   Analyzing week6_campus_notify...
+   No issues found!
+   ```
+
+2. **Pengujian Unit Otomatis:**
+   ```powershell
+   flutter test
+   ```
+   **Hasil:**
+   ```text
+   00:00 +0: loading test/auth_push_test.dart
+   00:00 +1: routeFromMessage parses announcement payloads safely
+   00:00 +2: Announcement Entity & Model Entity preserves properties
+   00:00 +3: Announcement Entity & Model Model converts toMap and fromMap correctly
+   00:00 +4: 401 refreshes once and retries the request with the new access token
+   00:00 +5: dead refresh token clears session and invokes logout callback
+   00:00 +6: AnnouncementRepositoryImpl & UseCase fetchAnnouncements returns non-empty list without failure
+   00:00 +7: AnnouncementRepositoryImpl & UseCase getAnnouncementById returns matching announcement
+   00:00 +8: AnnouncementRepositoryImpl & UseCase getAnnouncementById returns failure when id not found
+   00:00 +9: AnnouncementRepositoryImpl & UseCase GetAnnouncements usecase calls repository.fetchAnnouncements
+   00:00 +9: All tests passed!
+   ```
+   **9/9 Unit Tests Berhasil Lolos (PASS)** ✅.
+
+---
+
+## 🎯 Definisi Selesai (Definition of Done)
+
+Refactoring Clean Architecture pada fitur `announcements` dinyatakan **SELESAI**:
+- ✅ Tiga pemeriksaan sterilitas menghasilkan **0 temuan** pelanggaran.
+- ✅ `flutter analyze` bersih tanpa warning atau lint error.
+- ✅ Seluruh pengujian unit berjalan sukses dan hijau.
+- ✅ Tampilan dan fungsionalitas aplikasi berjalan identik seperti sebelum refactoring tanpa degradasi performa atau regresi fitur.
+
+
