@@ -10,6 +10,8 @@ import 'pages/home_page.dart';
 import 'pages/announcement_page.dart';
 import 'providers/auth_provider.dart';
 
+import 'routes.dart';
+
 // ---------------------------------------------------------------
 // Navigator key digunakan untuk navigasi imperatif dari callback
 // FCM yang tidak memiliki BuildContext (push dari luar widget tree).
@@ -25,30 +27,30 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/login',
+    initialLocation: AppRoutes.login,
     // redirect dipanggil setiap kali state berubah
     redirect: (context, state) {
       // Saat auth masih loading, jangan redirect
       if (authAsync.isLoading) return null;
 
       final isLoggedIn = authAsync.asData?.value ?? false;
-      final onLogin = state.matchedLocation == '/login';
+      final onLogin = state.matchedLocation == AppRoutes.login;
 
-      if (!isLoggedIn && !onLogin) return '/login';
-      if (isLoggedIn && onLogin) return '/home';
+      if (!isLoggedIn && !onLogin) return AppRoutes.login;
+      if (isLoggedIn && onLogin) return AppRoutes.home;
       return null;
     },
     routes: [
       GoRoute(
-        path: '/login',
+        path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
       ),
       GoRoute(
-        path: '/home',
+        path: AppRoutes.home,
         builder: (context, state) => const HomePage(),
       ),
       GoRoute(
-        path: '/pengumuman/:id',
+        path: AppRoutes.announcement,
         builder: (context, state) => AnnouncementPage(
           announcementId: state.pathParameters['id']!,
         ),
@@ -63,7 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 // menggunakan _rootNavigatorKey untuk mendapat context yang valid.
 // ---------------------------------------------------------------
 void _openPushRoute(String route) {
-  if (route == '/' || route.isEmpty) return;
+  if (route == AppRoutes.root || route.isEmpty) return;
 
   final ctx = _rootNavigatorKey.currentContext;
   if (ctx == null) return; // Router belum siap, abaikan

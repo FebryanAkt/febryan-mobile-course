@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../data/api_errors.dart';
 import '../providers/auth_provider.dart';
+import '../routes.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -34,7 +36,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // Tapi kita juga push manual jika state sudah true.
     final authState = ref.read(authStateProvider);
     authState.whenData((loggedIn) {
-      if (loggedIn && mounted) context.go('/home');
+      if (loggedIn && mounted) context.go(AppRoutes.home);
     });
 
     // Tampilkan error jika ada
@@ -42,7 +44,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (authError.hasError && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authError.error.toString()),
+          content: Text(mapApiError(authError.error!)),
           backgroundColor: Colors.red.shade700,
         ),
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../routes.dart';
 
 class AnnouncementPage extends StatelessWidget {
   const AnnouncementPage({super.key, required this.announcementId});
@@ -16,7 +17,7 @@ class AnnouncementPage extends StatelessWidget {
           if (context.canPop()) {
             context.pop();
           } else {
-            context.go('/home');
+            context.go(AppRoutes.home);
           }
         }),
       ),
@@ -52,7 +53,7 @@ class AnnouncementPage extends StatelessWidget {
                   if (context.canPop()) {
                     context.pop();
                   } else {
-                    context.go('/home');
+                    context.go(AppRoutes.home);
                   }
                 },
                 icon: const Icon(Icons.arrow_back),

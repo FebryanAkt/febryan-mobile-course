@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../routes.dart';
 import '../services/fcm_service.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -18,23 +19,23 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _subscribed = true; // Diasumsikan subscribe saat login
 
   // Simulasi riwayat notifikasi (dalam produksi: fetch dari backend / local DB)
-  final List<_NotifItem> _history = const [
+  final List<_NotifItem> _history = [
     _NotifItem(
       title: 'Jadwal UTS Dipercepat',
       body: 'UTS Pemrograman Mobile dimajukan ke 18 Oktober 2026.',
-      route: '/pengumuman/1',
+      route: AppRoutes.announcementDetail('1'),
       time: '08:00',
     ),
     _NotifItem(
       title: 'Pengumuman Beasiswa',
       body: 'Pendaftaran beasiswa prestasi dibuka hingga 30 Oktober 2026.',
-      route: '/pengumuman/2',
+      route: AppRoutes.announcementDetail('2'),
       time: 'Kemarin',
     ),
     _NotifItem(
       title: 'Libur Nasional',
       body: 'Kampus libur pada 28 Oktober 2026 (Hari Sumpah Pemuda).',
-      route: '/pengumuman/3',
+      route: AppRoutes.announcementDetail('3'),
       time: '2 hari lalu',
     ),
   ];
@@ -92,7 +93,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _logout() async {
     await ref.read(authStateProvider.notifier).logout();
-    if (mounted) context.go('/login');
+    if (mounted) context.go(AppRoutes.login);
   }
 
   @override

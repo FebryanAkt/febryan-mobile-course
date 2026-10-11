@@ -21,6 +21,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import '../routes.dart';
 
 // --------------- Plugin singleton ---------------
 final _local = FlutterLocalNotificationsPlugin();
@@ -104,19 +105,13 @@ Future<void> initLocalNotifications() async {
 String? pendingDeepLink;
 
 // ---------------------------------------------------------------
-// Helper: kembalikan '/' jika route null atau kosong
-// ---------------------------------------------------------------
-String safeRoute(String? route) =>
-    (route == null || route.trim().isEmpty) ? '/' : route;
-
-// ---------------------------------------------------------------
 // FOREGROUND LISTENER
 // Foreground FCM TIDAK menampilkan banner secara otomatis —
 // kita HARUS tampilkan manual lewat flutter_local_notifications.
 // ---------------------------------------------------------------
 void listenForeground(void Function(String route) go) {
   FirebaseMessaging.onMessage.listen((message) async {
-    final route = safeRoute(message.data['route'] as String?);
+    final route = routeFromMessage(message.data);
 
     // [BERBEDA Android] AndroidNotificationDetails wajib untuk menyebut channel.
     const androidDetails = AndroidNotificationDetails(
@@ -149,7 +144,7 @@ void listenForeground(void Function(String route) go) {
 
   // STATE BACKGROUND → tap → app dibuka (bukan dari mati total)
   FirebaseMessaging.onMessageOpenedApp.listen((message) {
-    go(safeRoute(message.data['route'] as String?));
+    go(routeFromMessage(message.data));
   });
 }
 
@@ -161,7 +156,7 @@ Future<void> handleTerminated(void Function(String route) go) async {
   // FCM: app diluncurkan dari tap notifikasi sistem (state Terminated)
   final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
   if (initialMessage != null) {
-    go(safeRoute(initialMessage.data['route'] as String?));
+    go(routeFromMessage(initialMessage.data));
     return; // Prioritaskan FCM; hindari navigasi ganda
   }
 
@@ -169,6 +164,6 @@ Future<void> handleTerminated(void Function(String route) go) async {
   final localRoute = pendingDeepLink;
   pendingDeepLink = null;
   if (localRoute != null) {
-    go(safeRoute(localRoute));
+    go(routeFromMessage({'route': localRoute}));
   }
 }
