@@ -4,11 +4,17 @@ import 'package:week6_campus_notify/core/format.dart';
 void main() {
   group('AppFormatters.parseRoute', () {
     test('normalizes missing leading slash', () {
-      expect(AppFormatters.parseRoute({'route': 'pengumuman/3'}), '/pengumuman/3');
+      expect(
+        AppFormatters.parseRoute({'route': 'pengumuman/3'}),
+        '/pengumuman/3',
+      );
     });
 
     test('preserves existing leading slash', () {
-      expect(AppFormatters.parseRoute({'route': '/pengumuman/3'}), '/pengumuman/3');
+      expect(
+        AppFormatters.parseRoute({'route': '/pengumuman/3'}),
+        '/pengumuman/3',
+      );
     });
 
     test('falls back to / on empty or missing route', () {
@@ -19,7 +25,10 @@ void main() {
 
   group('AppFormatters.extractId', () {
     test('extracts direct id key when present', () {
-      expect(AppFormatters.extractId({'id': '42', 'route': '/pengumuman/1'}), '42');
+      expect(
+        AppFormatters.extractId({'id': '42', 'route': '/pengumuman/1'}),
+        '42',
+      );
     });
 
     test('extracts last path segment when id is missing', () {

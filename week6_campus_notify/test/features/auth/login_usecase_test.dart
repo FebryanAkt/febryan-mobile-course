@@ -60,19 +60,22 @@ void main() {
       expect(result.failure?.message, contains('@'));
     });
 
-    test('returns ValidationFailure when password is shorter than 6 chars', () async {
-      final repo = FakeAuthDomainRepository();
-      final useCase = LoginUseCase(repo);
+    test(
+      'returns ValidationFailure when password is shorter than 6 chars',
+      () async {
+        final repo = FakeAuthDomainRepository();
+        final useCase = LoginUseCase(repo);
 
-      final result = await useCase(
-        email: 'user@kampus.ac.id',
-        password: '123',
-      );
+        final result = await useCase(
+          email: 'user@kampus.ac.id',
+          password: '123',
+        );
 
-      expect(result.session, isNull);
-      expect(result.failure, isA<ValidationFailure>());
-      expect(result.failure?.message, contains('minimal 6 karakter'));
-    });
+        expect(result.session, isNull);
+        expect(result.failure, isA<ValidationFailure>());
+        expect(result.failure?.message, contains('minimal 6 karakter'));
+      },
+    );
 
     test('returns UserSession on valid credentials', () async {
       final repo = FakeAuthDomainRepository();

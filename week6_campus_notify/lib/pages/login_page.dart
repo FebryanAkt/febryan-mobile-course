@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../data/api_errors.dart';
 import '../providers/auth_provider.dart';
 import '../routes.dart';
@@ -66,18 +67,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.school,
-                    size: 72,
-                    color: Colors.deepPurple,
-                  ),
+                  const Icon(Icons.school, size: 72, color: Colors.deepPurple),
                   const SizedBox(height: 16),
                   Text(
                     'Campus Notify',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   TextFormField(
@@ -143,10 +140,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'Masuk',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('Masuk', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],

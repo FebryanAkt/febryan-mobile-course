@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../features/announcements/presentation/providers/announcement_providers.dart';
+
+import '../features/announcements/presentation/widgets/announcement_list.dart';
+import '../features/announcements/presentation/widgets/announcement_search_bar.dart';
 import '../providers/auth_provider.dart';
 import '../routes.dart';
 import '../services/fcm_service.dart';
@@ -17,8 +19,8 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   String _tokenDisplay = 'Mengambil token...';
-  bool _subscribed = true; // Diasumsikan subscribe saat login
-
+  bool _subscribed = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -26,18 +28,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     _fetchToken();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchToken() async {
     final token = await FirebaseMessaging.instance.getToken();
-    if (mounted) {
-      setState(() {
-        if (token != null && token.length > 6) {
-          // Tampilkan hanya 6 karakter terakhir untuk keamanan
-          _tokenDisplay = '...${token.substring(token.length - 6)}';
-        } else {
-          _tokenDisplay = token ?? 'Gagal mendapatkan token';
-        }
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _tokenDisplay = (token != null && token.length > 6)
+          ? '...${token.substring(token.length - 6)}'
+          : (token ?? 'Gagal mendapatkan token');
+    });
   }
 
   Future<void> _toggleSubscription() async {
@@ -47,28 +51,25 @@ class _HomePageState extends ConsumerState<HomePage> {
       } else {
         await FcmService.subscribeToTopic('Pengumuman Kampus');
       }
-      if (mounted) {
-        setState(() => _subscribed = !_subscribed);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _subscribed
-                  ? 'Subscribe ke pengumuman-kampus'
-                  : 'Unsubscribe dari pengumuman-kampus',
-            ),
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _subscribed = !_subscribed);
+      _showSnackBar(
+        _subscribed
+            ? 'Subscribe ke pengumuman-kampus'
+            : 'Unsubscribe dari pengumuman-kampus',
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (mounted) _showSnackBar('Error: $e', isError: true);
     }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : null,
+      ),
+    );
   }
 
   Future<void> _logout() async {
@@ -78,7 +79,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final announcementsAsync = ref.watch(announcementsProvider);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -94,161 +94,130 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── FCM Token Card ──────────────────────────────────────
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.vpn_key, color: Colors.deepPurple),
-                      const SizedBox(width: 8),
-                      Text(
-                        'FCM Token (6 karakter terakhir)',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _tokenDisplay,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        tooltip: 'Salin token penuh',
-                        onPressed: () async {
-                          final token =
-                              await FirebaseMessaging.instance.getToken();
-                          if (token != null && context.mounted) {
-                            await Clipboard.setData(
-                              ClipboardData(text: token),
-                            );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Token disalin ke clipboard'),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _TokenCard(tokenDisplay: _tokenDisplay),
           const SizedBox(height: 12),
-
-          // ── Subscription Card ───────────────────────────────────
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.campaign, color: Colors.deepPurple),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Topik Broadcast',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('pengumuman-kampus'),
-                      Switch(
-                        value: _subscribed,
-                        onChanged: (_) => _toggleSubscription(),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    _subscribed
-                        ? 'Anda menerima notifikasi broadcast kampus'
-                        : 'Notifikasi broadcast dinonaktifkan',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
+          _SubscriptionCard(
+            subscribed: _subscribed,
+            onToggle: _toggleSubscription,
           ),
           const SizedBox(height: 16),
-
-          // ── Riwayat Notifikasi ──────────────────────────────────
+          AnnouncementSearchBar(controller: _searchController),
+          const SizedBox(height: 16),
           Text(
             'Riwayat Pengumuman',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
+            style: Theme.of(context).textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          announcementsAsync.when(
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Gagal memuat pengumuman: $err'),
-              ),
-            ),
-            data: (announcements) => Column(
-              children: announcements
-                  .map(
-                    (item) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.deepPurple,
-                          child: Icon(Icons.notifications, color: Colors.white),
-                        ),
-                        title: Text(item.title),
-                        subtitle: Text(
-                          item.body,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: Text(
-                          item.time,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.grey),
-                        ),
-                        onTap: () => context.go(item.route),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
+          const AnnouncementList(),
         ],
       ),
     );
   }
 }
 
+class _TokenCard extends StatelessWidget {
+  const _TokenCard({required this.tokenDisplay});
+  final String tokenDisplay;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.vpn_key, color: Colors.deepPurple),
+                const SizedBox(width: 8),
+                Text(
+                  'FCM Token (6 karakter terakhir)',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    tokenDisplay,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  tooltip: 'Salin token penuh',
+                  onPressed: () => _copyToken(context),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _copyToken(BuildContext context) async {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token != null && context.mounted) {
+      await Clipboard.setData(ClipboardData(text: token));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Token disalin ke clipboard')),
+        );
+      }
+    }
+  }
+}
+
+class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard({required this.subscribed, required this.onToggle});
+
+  final bool subscribed;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.campaign, color: Colors.deepPurple),
+                const SizedBox(width: 8),
+                Text(
+                  'Topik Broadcast',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('pengumuman-kampus'),
+                Switch(value: subscribed, onChanged: (_) => onToggle()),
+              ],
+            ),
+            Text(
+              subscribed
+                  ? 'Anda menerima notifikasi broadcast kampus'
+                  : 'Notifikasi broadcast dinonaktifkan',
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

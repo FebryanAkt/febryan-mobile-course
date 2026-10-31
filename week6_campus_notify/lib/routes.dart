@@ -12,4 +12,3 @@ class AppRoutes {
 /// Fungsi murni untuk mengekstrak dan memformat route dari payload data notifikasi
 String routeFromMessage(Map<String, dynamic> data) =>
     AppFormatters.parseRoute(data);
-

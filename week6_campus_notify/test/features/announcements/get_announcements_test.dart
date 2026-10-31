@@ -45,36 +45,42 @@ class FakeAnnouncementRepository implements AnnouncementRepository {
 
 void main() {
   group('GetAnnouncements Use Case (Pure Domain Test)', () {
-    test('GetAnnouncements meneruskan daftar pengumuman dari repository palsu', () async {
-      final fakeRepo = FakeAnnouncementRepository(
-        items: const [
-          Announcement(
-            id: '1',
-            title: 'Jadwal Kuliah',
-            body: 'Ruang A pindah',
-            route: '/pengumuman/1',
-            time: '08:00',
-          ),
-        ],
-      );
+    test(
+      'GetAnnouncements meneruskan daftar pengumuman dari repository palsu',
+      () async {
+        final fakeRepo = FakeAnnouncementRepository(
+          items: const [
+            Announcement(
+              id: '1',
+              title: 'Jadwal Kuliah',
+              body: 'Ruang A pindah',
+              route: '/pengumuman/1',
+              time: '08:00',
+            ),
+          ],
+        );
 
-      final useCase = GetAnnouncements(fakeRepo);
-      final result = await useCase();
+        final useCase = GetAnnouncements(fakeRepo);
+        final result = await useCase();
 
-      expect(result.failure, isNull);
-      expect(result.announcements.length, 1);
-      expect(result.announcements.first.title, 'Jadwal Kuliah');
-    });
+        expect(result.failure, isNull);
+        expect(result.announcements.length, 1);
+        expect(result.announcements.first.title, 'Jadwal Kuliah');
+      },
+    );
 
-    test('GetAnnouncements meneruskan failure tanpa melempar exception mentah', () async {
-      final fakeRepo = FakeAnnouncementRepository(fail: true);
+    test(
+      'GetAnnouncements meneruskan failure tanpa melempar exception mentah',
+      () async {
+        final fakeRepo = FakeAnnouncementRepository(fail: true);
 
-      final useCase = GetAnnouncements(fakeRepo);
-      final result = await useCase();
+        final useCase = GetAnnouncements(fakeRepo);
+        final result = await useCase();
 
-      expect(result.failure, isA<LocalFailure>());
-      expect(result.failure?.message, 'simulasi gagal memuat pengumuman');
-      expect(result.announcements, isEmpty);
-    });
+        expect(result.failure, isA<LocalFailure>());
+        expect(result.failure?.message, 'simulasi gagal memuat pengumuman');
+        expect(result.announcements, isEmpty);
+      },
+    );
   });
 }

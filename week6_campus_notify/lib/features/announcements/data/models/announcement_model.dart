@@ -27,11 +27,6 @@ class AnnouncementModel extends Announcement {
     );
   }
 
-  Announcement toEntity() => Announcement(
-    id: id,
-    title: title,
-    body: body,
-    route: route,
-    time: time,
-  );
+  Announcement toEntity() =>
+      Announcement(id: id, title: title, body: body, route: route, time: time);
 }

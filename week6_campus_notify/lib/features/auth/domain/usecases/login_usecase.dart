@@ -13,7 +13,9 @@ class LoginUseCase {
     if (!email.contains('@')) {
       return Future.value((
         session: null,
-        failure: const ValidationFailure('Format email tidak valid (harus mengandung @)'),
+        failure: const ValidationFailure(
+          'Format email tidak valid (harus mengandung @)',
+        ),
       ));
     }
     if (password.length < 6) {

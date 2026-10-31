@@ -73,11 +73,14 @@ void main() {
       expect(result.failure, isA<LocalFailure>());
     });
 
-    test('GetAnnouncements usecase calls repository.fetchAnnouncements', () async {
-      final useCase = GetAnnouncements(repository);
-      final result = await useCase();
-      expect(result.failure, isNull);
-      expect(result.announcements.length, 3);
-    });
+    test(
+      'GetAnnouncements usecase calls repository.fetchAnnouncements',
+      () async {
+        final useCase = GetAnnouncements(repository);
+        final result = await useCase();
+        expect(result.failure, isNull);
+        expect(result.announcements.length, 3);
+      },
+    );
   });
 }
