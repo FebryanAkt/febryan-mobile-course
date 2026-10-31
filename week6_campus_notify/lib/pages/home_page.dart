@@ -43,9 +43,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _toggleSubscription() async {
     try {
       if (_subscribed) {
-        await FcmService.unsubscribeFromTopic('pengumuman-kampus');
+        await FcmService.unsubscribeFromTopic('Pengumuman Kampus');
       } else {
-        await FcmService.subscribeToTopic('pengumuman-kampus');
+        await FcmService.subscribeToTopic('Pengumuman Kampus');
       }
       if (mounted) {
         setState(() => _subscribed = !_subscribed);
