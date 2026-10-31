@@ -1,31 +1,14 @@
 # Laporan Praktikum Minggu 8: Mid Project Review & Code Review
 
-> **Mata Kuliah:** Pemrograman Mobile  
-> **Repository:** `FebryanAkt/febryan-mobile-course`  
-> **Proyek yang Direview:** `week6_campus_notify`  
-> **Tanggal Pengerjaan:** 31 Oktober 2026  
-
 ---
 
-## 🔗 Tautan Cepat Dokumen Terkait
+## Tautan Cepat Dokumen Terkait
 
 Berikut adalah berkas pendukung dan dokumen evaluasi yang telah disiapkan:
-* 📋 **[Checklist Kesiapan Tengah Semester](docs/review-checklist.md)**: Hasil audit grep sterilitas Clean Architecture, status mesin hijau, dan tabel evaluasi commit.
-* 🤖 **[AI Review vs Keputusan Final](docs/ai-review-vs-keputusan.md)**: Verifikasi 5 temuan AI coding assistant, bukti grep, penerimaan 4 usulan, dan penolakan 1 saran keliru.
-* 📝 **[Template Pull Request](.github/pull_request_template.md)**: Format baku PR (masalah, solusi, cara uji, dan screenshot).
-* 🏷️ **[Template Issue Tracking](.github/ISSUE_TEMPLATE.md)**: Format pelaporan bug dan perbaikan sistem.
-
----
-
-## Ringkasan Eksekutif Paruh Semester
-
-Pada evaluasi tengah semester (Minggu 8), fokus penilaian bukan pada banyaknya fitur antarmuka, melainkan pada **kualitas fondasi arsitektur, kebersihan kode, otomasi pengujian, dan kedisiplinan kolaborasi (GitFlow & Code Review)**. 
-
-Proyek `week6_campus_notify` yang telah direfaktor ke **feature-first Clean Architecture** pada Minggu 7 kini melalui tahap validasi akhir:
-1. **Branching Model Terstandarisasi:** Branch `main` terlindungi, `develop` aktif sebagai pusat integrasi, dan fitur dikerjakan pada branch pendek `feat/*`.
-2. **Static Analysis & Testing Bersih:** `flutter analyze` 100% bebas issue, dan `flutter test` lulus 25/25 skenario unit & domain test.
-3. **Pipa CI/CD Aktif:** GitHub Actions Workflow (`ci.yml`) menolak PR kotor secara otomatis.
-4. **Verifikasi AI Kritis:** Review AI tidak ditelan mentah-mentah; temuan diverifikasi secara manual menggunakan bukti grep dan pemahaman arsitektur Dart/Flutter.
+*  **[Checklist Kesiapan Tengah Semester](docs/review-checklist.md)**: Hasil audit grep sterilitas Clean Architecture, status mesin hijau, dan tabel evaluasi commit.
+*  **[AI Review vs Keputusan Final](docs/ai-review-vs-keputusan.md)**: Verifikasi 5 temuan AI coding assistant, bukti grep, penerimaan 4 usulan, dan penolakan 1 saran keliru.
+*  **[Template Pull Request](.github/pull_request_template.md)**: Format baku PR (masalah, solusi, cara uji, dan screenshot).
+*  **[Template Issue Tracking](.github/ISSUE_TEMPLATE.md)**: Format pelaporan bug dan perbaikan sistem.
 
 ---
 
@@ -259,11 +242,3 @@ Dari 5 temuan yang diberikan oleh AI, dilakukan analisis teknis mendalam sebelum
 > Hal konkret yang diperbaiki adalah **pengembalian objek typed `Failure` pada `announcementsProvider`** (menggantikan lemparan string `Exception` generik).  
 > **Dampaknya:** Layer UI (`HomePage` / presentation) kini dapat melakukan pattern matching terhadap tipe error yang terjadi. Sebagai contoh, jika error bertipe `NetworkFailure`, UI dapat menampilkan tombol interaktif "Coba Lagi (Retry)", sedangkan jika bertipe `LocalFailure` atau `ValidationFailure`, UI menampilkan pesan deskriptif tanpa membuat pengguna bingung. Hal ini meningkatkan ketahanan aplikasi (*resilience*) dan kualitas pengalaman pengguna (UX).
 
----
-
-## Referensi Pendukung
-1. Modul Praktikum: *#08 Minggu 8 - Mid Project Review & Code Review*, JTI Polinema.
-2. Atlassian: *GitFlow Workflow & Branching Strategy Guidelines*.
-3. Dart & Flutter Official Documentation: *Effective Dart - Design and Usage Conventions*.
-4. Google Codelabs: *Pull Request Review Etiquette & Static Analysis Automation*.
-5. OWASP Foundation: *Mobile Top 10 Security Risks — Sensitive Data Exposure & Logging*.
