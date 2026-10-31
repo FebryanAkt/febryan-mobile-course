@@ -330,3 +330,34 @@ Jika listener `onTokenRefresh` diabaikan dan tidak mengirimkan token baru ke dat
 1. **Penolakan Stub pada `sendTokenToBackend`:** Draf awal AI hanya menuliskan komentar `// TODO:` dan mencetak token ke log. Ini ditolak karena token lifecycle menjadi tidak berguna tanpa adanya *HTTP POST* riil ke endpoint `/devices`.
 2. **Penolakan Pencetakan Token Penuh:** Draf AI mencetak full registration token ke terminal untuk alasan debugging. Ini ditolak dan diperbaiki dengan fungsi masking (hanya mencetak 6 karakter terakhir) demi mematuhi regulasi OWASP Mobile Top 10 terkait kebocoran data sensitif di log perangkat.
 3. **Penolakan Navigasi Manual `MaterialPageRoute`:** Draf AI menggunakan push route manual yang merusak integrasi deep link. Diperbaiki dengan mengintegrasikan `GoRouter.go()` dan *auth guard redirect* agar pengguna yang belum login tidak bisa mengakses halaman pengumuman sensitif dari notifikasi luar.
+
+
+---
+
+## Bukti Mesin Hijau (Week 8 — Mid Project Review)
+
+### `flutter analyze`
+
+```
+> flutter analyze
+Analyzing week6_campus_notify...
+No issues found! (ran in 10.2s)
+```
+
+### `flutter test`
+
+```
+> flutter test
+00:01 +25: All tests passed!
+```
+
+Rincian 25 test:
+- `test/core/format_test.dart` — parseRoute normalization (2 test)
+- `test/auth_push_test.dart` — token refresh, retry 401, payload parsing, session expiry (14 test)
+- `test/features/announcements/` — entity, model, repository, use case (6 test)
+- `test/features/auth/` — login use case validation & auth failure (4 test)
+
+### Dokumentasi Review
+
+- [`docs/review-checklist.md`](docs/review-checklist.md) — Checklist kesiapan tengah semester
+- [`docs/ai-review-vs-keputusan.md`](docs/ai-review-vs-keputusan.md) — Tabel usulan AI vs keputusan final + bukti grep

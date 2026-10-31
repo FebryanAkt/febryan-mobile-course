@@ -18,7 +18,7 @@ final getAnnouncementsProvider = Provider<GetAnnouncements>((ref) {
 final announcementsProvider = FutureProvider<List<Announcement>>((ref) async {
   final result = await ref.watch(getAnnouncementsProvider).call();
   if (result.failure != null) {
-    throw Exception(result.failure!.message);
+    throw result.failure!; // Pertahankan tipe Failure agar UI bisa pattern-match
   }
   return result.announcements;
 });
