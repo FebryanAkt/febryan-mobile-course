@@ -38,9 +38,12 @@ dependencies:
   go_router: ^18.0.2
   dio: ^5.11.1
   flutter_secure_storage: ^11.2.0
+  http: ^1.2.0
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
   flutter_local_notifications: ^22.3.1
+  image_picker: ^1.2.4
+  record: ^7.1.2
 
 dev_dependencies:
   flutter_test:

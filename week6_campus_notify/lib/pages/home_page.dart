@@ -85,6 +85,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         title: const Text('Campus Notify'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.smart_toy_outlined),
+            tooltip: 'Tanya AI Kampus',
+            onPressed: () => context.go(AppRoutes.chat),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Keluar',
             onPressed: _logout,
@@ -111,6 +116,11 @@ class _HomePageState extends ConsumerState<HomePage> {
           const SizedBox(height: 8),
           const AnnouncementList(),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.go(AppRoutes.chat),
+        icon: const Icon(Icons.smart_toy_rounded),
+        label: const Text('Tanya AI'),
       ),
     );
   }

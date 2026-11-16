@@ -9,6 +9,7 @@ import 'data/api_client.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 import 'pages/announcement_page.dart';
+import 'features/chat_screen.dart';
 import 'providers/auth_provider.dart';
 
 import 'routes.dart';
@@ -54,6 +55,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.announcement,
         builder: (context, state) =>
             AnnouncementPage(announcementId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.chat,
+        builder: (context, state) => const ChatScreen(),
       ),
     ],
   );
