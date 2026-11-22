@@ -79,7 +79,7 @@
 
 ### Langkah 3: Integrasi FCM & Token Lifecycle (Praktikum 2)
 
-Dikelola secara terpusat pada `lib/services/fcm_service.dart`:
+Dikelola secara pada `lib/services/fcm_service.dart`:
 
 1. **Runtime Permission (Android 13+ & iOS):**
    Android 13+ (API level 33) mewajibkan izin runtime `POST_NOTIFICATIONS`:
